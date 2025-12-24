@@ -1,0 +1,297 @@
+/* Cosmetic base for corners (not interactive, not hoverable) */
+.corner-cosmetic {
+    pointer-events: none;
+    box-shadow: none;
+    border: 2px solid #495057;
+    background: #b0b0b0;
+    position: absolute;
+}
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #ffffff 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    perspective: 2000px;
+}
+
+.container {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    perspective: 2000px;
+    perspective-origin: center center;
+}
+
+.board-3d {
+    position: relative;
+    width: 800px;
+    height: 800px;
+    transform-style: preserve-3d;
+    /* Remove static transform, let JS control it */
+    transition: transform 0.3s ease;
+}
+
+.center-area {
+    position: absolute;
+    width: 560px;
+    height: 560px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) translateZ(-50px);
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    border: 8px solid #1a252f;
+    border-radius: 20px;
+    box-shadow: 
+        0 0 50px rgba(0, 0, 0, 0.5),
+        inset 0 0 50px rgba(0, 0, 0, 0.3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1;
+}
+
+.center-content {
+    text-align: center;
+    color: #ecf0f1;
+}
+
+.center-content h1 {
+    font-size: 72px;
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+    letter-spacing: 10px;
+}
+
+.board-spaces {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    transform-style: preserve-3d;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Base space styling */
+/* All tiles are now square and match corner size */
+.space {
+    position: absolute;
+    width: 98px;
+    height: 98px;
+    background: #f8f9fa;
+    border: 2px solid #495057;
+    transform-style: preserve-3d;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 
+        0 12px 32px 0 rgba(0,0,0,0.35), /* strong shadow under tile */
+        0 5px 15px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    .corner-cosmetic {
+        /* Add shadow under cosmetic base as well */
+        box-shadow: 0 12px 32px 0 rgba(0,0,0,0.35);
+    }
+    margin: 1px;
+}
+
+/* Removed the 3D lip effect */
+
+.space:hover {
+    transform: translateZ(10px) !important;
+    box-shadow: 
+        0 10px 25px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    z-index: 100;
+}
+
+.space-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 5px;
+    transform: translateZ(2px);
+    font-size: 9px;
+    text-align: center;
+    color: #212529;
+    font-weight: bold;
+    position: relative;
+}
+
+.space-name {
+    font-size: 8px;
+    line-height: 1.1;
+    margin-bottom: 2px;
+}
+
+.space-price {
+    font-size: 7px;
+    color: #495057;
+}
+
+.space-color {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 8px;
+    border-top: 2px solid rgba(0, 0, 0, 0.2);
+}
+
+.space-icon {
+    font-size: 20px;
+    margin-top: 5px;
+}
+
+/* Color classes */
+.space-color.brown { background: #8b4513; }
+.space-color.light-blue { background: #87ceeb; }
+.space-color.pink { background: #ff69b4; }
+.space-color.orange { background: #ffa500; }
+.space-color.red { background: #ff0000; }
+.space-color.yellow { background: #ffd700; }
+.space-color.green { background: #228b22; }
+.space-color.dark-blue { background: #00008b; }
+
+/* Corner spaces */
+.space.corner {
+    width: 98px;
+    height: 98px;
+    font-size: 12px;
+    margin: 1px;
+}
+
+/* Corner positions: Board is 800px, center is 560px, so (800-560)/2 = 120px margin */
+
+.space-go,
+.space-jail,
+.space-parking,
+.space-go-jail {
+    background: #b0b0b0;
+    /* plain grey */
+    transform: translateZ(5px);
+}
+
+/* Top row spaces (right to left, from GO corner) */
+.space-top {
+    bottom: 0;
+    transform: translateZ(5px);
+}
+
+.space-top[data-space="1"] { right: 102px; }
+.space-top[data-space="2"] { right: 164px; }
+.space-top[data-space="3"] { right: 226px; }
+.space-top[data-space="4"] { right: 288px; }
+.space-top[data-space="5"] { right: 350px; }
+.space-top[data-space="6"] { right: 412px; }
+.space-top[data-space="7"] { right: 474px; }
+.space-top[data-space="8"] { right: 536px; }
+.space-top[data-space="9"] { right: 598px; }
+
+/* Right side spaces (top to bottom, from Jail corner) */
+.space-right {
+    bottom: 0;
+    transform: rotateZ(90deg) translateZ(5px);
+    transform-origin: center center;
+}
+
+.space-right[data-space="11"] { right: 102px; }
+.space-right[data-space="12"] { right: 164px; }
+.space-right[data-space="13"] { right: 226px; }
+.space-right[data-space="14"] { right: 288px; }
+.space-right[data-space="15"] { right: 350px; }
+.space-right[data-space="16"] { right: 412px; }
+.space-right[data-space="17"] { right: 474px; }
+.space-right[data-space="18"] { right: 536px; }
+.space-right[data-space="19"] { right: 598px; }
+
+/* Bottom row spaces (left to right, from Free Parking) */
+.space-bottom {
+    top: 0;
+    transform: rotateZ(180deg) translateZ(5px);
+    transform-origin: center center;
+}
+
+.space-bottom[data-space="21"] { left: 102px; }
+.space-bottom[data-space="22"] { left: 164px; }
+.space-bottom[data-space="23"] { left: 226px; }
+.space-bottom[data-space="24"] { left: 288px; }
+.space-bottom[data-space="25"] { left: 350px; }
+.space-bottom[data-space="26"] { left: 412px; }
+.space-bottom[data-space="27"] { left: 474px; }
+.space-bottom[data-space="28"] { left: 536px; }
+.space-bottom[data-space="29"] { left: 598px; }
+
+/* Left side spaces (bottom to top, from Go to Jail) */
+.space-left {
+    top: 0;
+    transform: rotateZ(-90deg) translateZ(5px);
+    transform-origin: center center;
+}
+
+.space-left[data-space="31"] { left: 102px; }
+.space-left[data-space="32"] { left: 164px; }
+.space-left[data-space="33"] { left: 226px; }
+.space-left[data-space="34"] { left: 288px; }
+.space-left[data-space="35"] { left: 350px; }
+.space-left[data-space="36"] { left: 412px; }
+.space-left[data-space="37"] { left: 474px; }
+.space-left[data-space="38"] { left: 536px; }
+.space-left[data-space="39"] { left: 598px; }
+
+/* Special space types */
+.space.property {
+    background: #ffffff;
+}
+
+.space.chance {
+    background: #ffd700;
+}
+
+.space.community-chest {
+    background: #87ceeb;
+}
+
+.space.railroad {
+    background: #2c3e50;
+    color: #ffffff;
+}
+
+.space.railroad .space-content {
+    color: #ffffff;
+}
+
+.space.utility {
+    background: #98d8c8;
+}
+
+.space.tax {
+    background: #ff6b6b;
+    color: #ffffff;
+}
+
+.space.tax .space-content {
+    color: #ffffff;
+}
+
+/* Sidewalk effect - gaps between spaces */
+.space:not(.corner) {
+    box-shadow: 
+        0 5px 15px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
