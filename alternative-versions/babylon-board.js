@@ -11,11 +11,8 @@ async function initScene() {
             return;
         }
 
-        // Create engine with error handling
-        engine = new BABYLON.Engine(canvas, true, {
-            preserveDrawingBuffer: true,
-            stencil: true
-        });
+        // Create engine - simpler initialization
+        engine = new BABYLON.Engine(canvas, true);
 
         // Create scene
         scene = new BABYLON.Scene(engine);
@@ -71,13 +68,17 @@ async function initScene() {
 function createBoard() {
     const boardSize = 8; // 3D units
     const cornerSize = 1; // 3D units
-    const tileSize = (boardSize - 2 * cornerSize) / 9;
+    const numSlivers = 9;
+    const sliverLength = (boardSize - 2 * cornerSize) / numSlivers;
 
     const tileNames = {
         0: 'GO', 10: 'JAIL', 20: 'FREE PARKING', 30: 'GO TO JAIL'
     };
 
-    const cornerPositions = [
+    const tiles = [];
+
+    // Corner tiles first
+    const corners = [
         { pos: { x: boardSize/2 - cornerSize/2, z: boardSize/2 - cornerSize/2 }, name: 'GO', space: 0 },
         { pos: { x: -boardSize/2 + cornerSize/2, z: -boardSize/2 + cornerSize/2 }, name: 'FREE PARKING', space: 20 },
         { pos: { x: boardSize/2 - cornerSize/2, z: -boardSize/2 + cornerSize/2 }, name: 'JAIL', space: 10 },
@@ -85,7 +86,7 @@ function createBoard() {
     ];
 
     // Create corner tiles
-    cornerPositions.forEach(corner => {
+    corners.forEach(corner => {
         const tile = BABYLON.MeshBuilder.CreateBox('corner_' + corner.space, {
             size: cornerSize, height: 0.1
         }, scene);
@@ -94,35 +95,84 @@ function createBoard() {
         tile.position.y = 0;
 
         const material = new BABYLON.StandardMaterial('mat_' + corner.space, scene);
-        material.diffuse = new BABYLON.Color3(0.95, 0.95, 0.95);
-        material.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+        material.diffuse = new BABYLON.Color3(0.75, 0.75, 0.75);
         tile.material = material;
 
-        // Store tile data
         tile.metadata = {
             space: corner.space,
             name: corner.name,
-            position: tile.position
+            position: tile.position.clone()
         };
 
-        // Click handler
+        tiles.push(tile);
+
         tile.actionManager = new BABYLON.ActionManager(scene);
         tile.actionManager.registerAction(
             new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger, () => {
-                BabylonTokenSelection.setCurrentTile({
-                    spaceNum: corner.space,
-                    name: corner.name,
-                    position: new BABYLON.Vector3(corner.pos.x, 1, corner.pos.z)
-                });
                 console.log(`Tile clicked: ${corner.name} (space ${corner.space})`);
             })
         );
     });
 
-    // Create regular tiles (simplified - just corners for now)
-    // You can expand this to create all 40 tiles
+    // Helper to create regular tiles
+    function createTile(x, z, spaceNum) {
+        const tile = BABYLON.MeshBuilder.CreateBox(`tile_${spaceNum}`, {
+            width: sliverLength, height: 0.1, depth: cornerSize
+        }, scene);
+        tile.position.x = x;
+        tile.position.z = z;
+        tile.position.y = 0;
 
-    console.log('Board created with 4 corner tiles');
+        const material = new BABYLON.StandardMaterial(`tileMat_${spaceNum}`, scene);
+        material.diffuse = new BABYLON.Color3(0.97, 0.97, 0.98);
+        tile.material = material;
+
+        const tileName = tileNames[spaceNum] || `Tile ${spaceNum}`;
+        tile.metadata = {
+            space: spaceNum,
+            name: tileName,
+            position: tile.position.clone()
+        };
+
+        tiles.push(tile);
+
+        tile.actionManager = new BABYLON.ActionManager(scene);
+        tile.actionManager.registerAction(
+            new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger, () => {
+                console.log(`Tile clicked: ${tileName} (space ${spaceNum})`);
+            })
+        );
+    }
+
+    // Bottom row (spaces 1-9, right to left)
+    for (let i = 1; i <= numSlivers; i++) {
+        const x = boardSize/2 - cornerSize - (i-0.5)*sliverLength;
+        const z = boardSize/2 - cornerSize/2;
+        createTile(x, z, i);
+    }
+
+    // Left side (spaces 11-19, bottom to top)
+    for (let i = 1; i <= numSlivers; i++) {
+        const x = -boardSize/2 + cornerSize/2;
+        const z = boardSize/2 - cornerSize - (i-0.5)*sliverLength;
+        createTile(x, z, 10 + i);
+    }
+
+    // Top row (spaces 21-29, left to right)
+    for (let i = 1; i <= numSlivers; i++) {
+        const x = -boardSize/2 + cornerSize + (i-0.5)*sliverLength;
+        const z = -boardSize/2 + cornerSize/2;
+        createTile(x, z, 20 + i);
+    }
+
+    // Right side (spaces 31-39, top to bottom)
+    for (let i = 1; i <= numSlivers; i++) {
+        const x = boardSize/2 - cornerSize/2;
+        const z = -boardSize/2 + cornerSize + (i-0.5)*sliverLength;
+        createTile(x, z, 30 + i);
+    }
+
+    console.log(`Board created with ${tiles.length} tiles`);
 }
 
 // Initialize when page loads

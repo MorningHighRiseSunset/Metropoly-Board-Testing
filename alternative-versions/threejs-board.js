@@ -1,8 +1,11 @@
 // Three.js Monopoly Board Implementation
 
 import * as THREE from 'three';
-import { ThreeTokenLoader } from './threejs-tokenLoader.js';
-import { ThreeTokenSelection } from './threejs-tokenSelection.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+// Re-export for window access
+window.THREE = THREE;
+window.GLTFLoader = GLTFLoader;
 
 let scene, camera, renderer;
 
@@ -38,11 +41,36 @@ async function initScene() {
     directionalLight.castShadow = true;
     scene.add(directionalLight);
 
-    // Initialize token loader
-    await ThreeTokenLoader.loadAllTokens();
+    // Initialize loaders
+    const loader = new GLTFLoader();
+    
+    // Load tokens
+    const tokens = {
+        'tophat': '../Models/TopHat/tophat.glb',
+        'shoe': '../Models/Shoe/shoe.glb',
+        'cheeseburger': '../Models/Cheeseburger/cheeseburger.glb',
+        'helicopter': '../Models/Helicopter/helicopter.glb',
+        'football': '../Models/Football/football.glb',
+        'rollsroyce': '../Models/RollsRoyce/rollsRoyceCarAnim.glb'
+    };
 
-    // Initialize token selection
-    ThreeTokenSelection.init(scene);
+    const loadedTokens = {};
+    for (const [name, path] of Object.entries(tokens)) {
+        try {
+            const gltf = await new Promise((resolve, reject) => {
+                loader.load(path, resolve, undefined, reject);
+            });
+            loadedTokens[name] = gltf;
+            console.log(`Loaded token: ${name}`);
+        } catch (error) {
+            console.warn(`Failed to load token ${name}:`, error);
+        }
+    }
+
+    // Store tokens globally for spawning
+    window.loadedTokens = loadedTokens;
+    window.scene = scene;
+    window.THREE = THREE;
 
     // Create the board
     createBoard();
@@ -63,13 +91,18 @@ async function initScene() {
 function createBoard() {
     const boardSize = 8;
     const cornerSize = 1;
-    const tileSize = (boardSize - 2 * cornerSize) / 9;
+    const numSlivers = 9;
+    const sliverLength = (boardSize - 2 * cornerSize) / numSlivers;
 
     const tileNames = {
         0: 'GO', 10: 'JAIL', 20: 'FREE PARKING', 30: 'GO TO JAIL'
     };
 
-    const cornerPositions = [
+    // Create all 40 tiles
+    const tiles = [];
+
+    // Corner tiles
+    const corners = [
         { pos: new THREE.Vector3(boardSize/2 - cornerSize/2, 0, boardSize/2 - cornerSize/2), name: 'GO', space: 0 },
         { pos: new THREE.Vector3(-boardSize/2 + cornerSize/2, 0, -boardSize/2 + cornerSize/2), name: 'FREE PARKING', space: 20 },
         { pos: new THREE.Vector3(boardSize/2 - cornerSize/2, 0, -boardSize/2 + cornerSize/2), name: 'JAIL', space: 10 },
@@ -77,15 +110,14 @@ function createBoard() {
     ];
 
     // Create corner tiles
-    cornerPositions.forEach(corner => {
+    corners.forEach(corner => {
         const geometry = new THREE.BoxGeometry(cornerSize, 0.1, cornerSize);
-        const material = new THREE.MeshLambertMaterial({ color: 0xf0f0f0 });
+        const material = new THREE.MeshLambertMaterial({ color: 0xc0c0c0 });
         const tile = new THREE.Mesh(geometry, material);
         tile.position.copy(corner.pos);
         tile.castShadow = true;
         tile.receiveShadow = true;
 
-        // Store metadata
         tile.userData = {
             space: corner.space,
             name: corner.name,
@@ -93,17 +125,56 @@ function createBoard() {
         };
 
         scene.add(tile);
-
-        // Add click handler via raycaster
-        tile.userData.clickHandler = () => {
-            ThreeTokenSelection.setCurrentTile({
-                spaceNum: corner.space,
-                name: corner.name,
-                position: corner.pos.clone()
-            });
-            console.log(`Tile clicked: ${corner.name} (space ${corner.space})`);
-        };
+        tiles.push(tile);
     });
+
+    // Helper to create a regular tile
+    function createTile(x, z, spaceNum) {
+        const geometry = new THREE.BoxGeometry(sliverLength, 0.1, cornerSize);
+        const material = new THREE.MeshLambertMaterial({ color: 0xf8f9fa });
+        const tile = new THREE.Mesh(geometry, material);
+        tile.position.set(x, 0, z);
+        tile.castShadow = true;
+        tile.receiveShadow = true;
+
+        const tileName = tileNames[spaceNum] || `Tile ${spaceNum}`;
+        tile.userData = {
+            space: spaceNum,
+            name: tileName,
+            position: new THREE.Vector3(x, 0.05, z)
+        };
+
+        scene.add(tile);
+        tiles.push(tile);
+    }
+
+    // Bottom row (spaces 1-9, right to left)
+    for (let i = 1; i <= numSlivers; i++) {
+        const x = boardSize/2 - cornerSize - (i-0.5)*sliverLength;
+        const z = boardSize/2 - cornerSize/2;
+        createTile(x, z, i);
+    }
+
+    // Left side (spaces 11-19, bottom to top)
+    for (let i = 1; i <= numSlivers; i++) {
+        const x = -boardSize/2 + cornerSize/2;
+        const z = boardSize/2 - cornerSize - (i-0.5)*sliverLength;
+        createTile(x, z, 10 + i);
+    }
+
+    // Top row (spaces 21-29, left to right)
+    for (let i = 1; i <= numSlivers; i++) {
+        const x = -boardSize/2 + cornerSize + (i-0.5)*sliverLength;
+        const z = -boardSize/2 + cornerSize/2;
+        createTile(x, z, 20 + i);
+    }
+
+    // Right side (spaces 31-39, top to bottom)
+    for (let i = 1; i <= numSlivers; i++) {
+        const x = boardSize/2 - cornerSize/2;
+        const z = -boardSize/2 + cornerSize + (i-0.5)*sliverLength;
+        createTile(x, z, 30 + i);
+    }
 
     // Add raycasting for click detection
     const raycaster = new THREE.Raycaster();
@@ -114,17 +185,16 @@ function createBoard() {
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
         raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(scene.children);
+        const intersects = raycaster.intersectObjects(tiles);
 
-        for (let i = 0; i < intersects.length; i++) {
-            if (intersects[i].object.userData.clickHandler) {
-                intersects[i].object.userData.clickHandler();
-                break;
-            }
+        if (intersects.length > 0) {
+            const tile = intersects[0].object;
+            console.log(`Tile clicked: ${tile.userData.name} (space ${tile.userData.space})`);
+            // You can add token spawning logic here
         }
     });
 
-    console.log('Board created with 4 corner tiles');
+    console.log(`Board created with ${tiles.length} tiles`);
 }
 
 function onWindowResize() {

@@ -5,21 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monopoly Board - Three.js Version</title>
     <link rel="stylesheet" href="threejs-styles.css">
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://cdn.jsdelivr.net/npm/three@r128/build/three.module.js",
-                "three/addons/": "https://cdn.jsdelivr.net/npm/three@r128/examples/jsm/"
-            }
-        }
-    </script>
 </head>
 <body>
     <div id="token-container"></div>
     
-    <!-- Token loading and selection scripts -->
-    <script type="module" src="threejs-tokenLoader.js"></script>
-    <script type="module" src="threejs-tokenSelection.js"></script>
+    <!-- Three.js and modules -->
+    <script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@latest/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@latest/examples/jsm/"
+        }
+    }
+    </script>
+    
     <!-- Main board logic -->
     <script type="module" src="threejs-board.js"></script>
 </body>

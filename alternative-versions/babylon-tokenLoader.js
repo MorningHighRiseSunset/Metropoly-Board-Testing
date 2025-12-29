@@ -2,12 +2,12 @@
 
 const BabylonTokenLoader = {
     tokens: {
-        'tophat': './Models/TopHat/tophat.glb',
-        'shoe': './Models/Shoe/shoe.glb',
-        'cheeseburger': './Models/Cheeseburger/cheeseburger.glb',
-        'helicopter': './Models/Helicopter/helicopter.glb',
-        'football': './Models/Football/football.glb',
-        'rollsroyce': './Models/RollsRoyce/rollsRoyceCarAnim.glb'
+        'tophat': '../Models/TopHat/tophat.glb',
+        'shoe': '../Models/Shoe/shoe.glb',
+        'cheeseburger': '../Models/Cheeseburger/cheeseburger.glb',
+        'helicopter': '../Models/Helicopter/helicopter.glb',
+        'football': '../Models/Football/football.glb',
+        'rollsroyce': '../Models/RollsRoyce/rollsRoyceCarAnim.glb'
     },
 
     tokenModels: {},
