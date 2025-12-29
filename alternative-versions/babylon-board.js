@@ -11,33 +11,35 @@ async function initScene() {
             return;
         }
 
-        // Create engine - simpler initialization
+        // Create engine
         engine = new BABYLON.Engine(canvas, true);
 
         // Create scene
         scene = new BABYLON.Scene(engine);
-        scene.clearColor = new BABYLON.Color3(0.9, 0.9, 0.9);
+        scene.clearColor = new BABYLON.Color3(0.91, 0.91, 0.91);
         
-        // Setup camera
+        // Setup camera with isometric-like view (matching CSS 3D transforms)
         camera = new BABYLON.ArcRotateCamera(
             'camera',
             BABYLON.Tools.ToRadians(-45),
             BABYLON.Tools.ToRadians(60),
-            40,
+            28,
             BABYLON.Vector3.Zero(),
             scene
         );
         camera.attachControl(canvas, true);
         camera.wheelPrecision = 50;
-        camera.lowerRadiusLimit = 20;
-        camera.upperRadiusLimit = 100;
+        camera.lowerRadiusLimit = 15;
+        camera.upperRadiusLimit = 60;
+        camera.angularSensibilityX = 1000;
+        camera.angularSensibilityY = 1000;
 
-        // Lighting
+        // Lighting - bright and even to match original board
         const light1 = new BABYLON.HemisphericLight('light1', new BABYLON.Vector3(0, 1, 0), scene);
-        light1.intensity = 0.8;
+        light1.intensity = 0.9;
 
-        const light2 = new BABYLON.PointLight('light2', new BABYLON.Vector3(5, 10, 5), scene);
-        light2.intensity = 0.6;
+        const light2 = new BABYLON.PointLight('light2', new BABYLON.Vector3(10, 15, 10), scene);
+        light2.intensity = 0.5;
 
         // Initialize token loader
         await BabylonTokenLoader.init(scene);

@@ -12,32 +12,33 @@ let scene, camera, renderer;
 async function initScene() {
     // Create scene
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xdddddd);
-    scene.fog = new THREE.Fog(0xdddddd, 50, 100);
+    scene.background = new THREE.Color(0xe8e8e8);
 
-    // Create camera
+    // Create camera with proper isometric-like perspective
     camera = new THREE.PerspectiveCamera(
-        75,
+        50,
         window.innerWidth / window.innerHeight,
         0.1,
         1000
     );
-    camera.position.set(0, 8, 10);
+    // Position camera to match CSS 3D isometric view (rotateX(60deg) rotateZ(-45deg))
+    camera.position.set(14, 12, 14);
     camera.lookAt(0, 0, 0);
 
     // Create renderer
     const container = document.getElementById('token-container');
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0xe8e8e8);
     renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
 
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    // Lighting - bright ambient to match original
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
-    directionalLight.position.set(5, 10, 7);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    directionalLight.position.set(10, 15, 10);
     directionalLight.castShadow = true;
     scene.add(directionalLight);
 
