@@ -40,6 +40,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (corner.data !== undefined) div.setAttribute('data-space', corner.data);
         // small accessibility hint
         div.setAttribute('role', 'button');
+        
+        // Add corner name label
+        const cornerName = document.createElement('div');
+        cornerName.className = 'corner-label';
+        const nameMap = { 0: 'GO', 10: 'JAIL', 20: 'FREE\nPARKING', 30: 'GO TO\nJAIL' };
+        cornerName.textContent = nameMap[corner.data] || '';
+        cornerName.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;font-weight:bold;font-size:11px;line-height:1.2;width:100%;';
+        div.appendChild(cornerName);
+        
         boardSpaces.appendChild(div);
     });
 
@@ -157,14 +166,34 @@ document.addEventListener('DOMContentLoaded', function() {
         // set a title for hover and a data-name attribute
         space.setAttribute('title', name);
         space.setAttribute('data-name', name);
+        
+        // Add tile name/number text to the space (invisible but present)
+        const nameLabel = document.createElement('div');
+        nameLabel.className = 'tile-label';
+        nameLabel.textContent = dsNum.toString();
+        nameLabel.setAttribute('aria-label', name);
+        space.appendChild(nameLabel);
+        
         // Click -> log name and center coordinates
         space.addEventListener('click', function (e) {
             const rect = space.getBoundingClientRect();
             const centerX = rect.left + rect.width / 2;
             const centerY = rect.top + rect.height / 2;
             console.log('Tile clicked:', name, '(data-space:', dsNum + '), center coords:', Math.round(centerX) + ',' + Math.round(centerY));
+            
+            // Update current tile information for token spawning
+            TokenSelection.currentTile = {
+                spaceNum: dsNum,
+                name: name,
+                coords: { x: Math.round(centerX), y: Math.round(centerY) },
+                element: space,
+                rect: rect
+            };
+            
             // If this is the GO tile (data-space 0) show the GO sign at viewport coords
-            if (dsNum === 0) showGoSignAt(space);
+            if (dsNum === 0) {
+                showGoSignAt(space);
+            }
         });
     });
 
@@ -237,6 +266,12 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('3D Board initialized!');
     console.log('Click and drag to rotate the board');
     console.log('Click on spaces to interact');
+
+    // Initialize token selection UI and load tokens
+    TokenSelection.init();
+    TokenLoader.loadAllTokens().then(() => {
+        console.log('Token system ready');
+    });
 });
 
 

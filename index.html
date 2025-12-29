@@ -5,6 +5,14 @@
 	<meta name="viewport" content="width=800, initial-scale=1.0">
 	<title>Metropoly Board Testing</title>
 	<link rel="stylesheet" href="styles.css">
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js",
+				"three/addons/": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/"
+			}
+		}
+	</script>
 </head>
 <body>
 	<div class="container">
@@ -17,6 +25,10 @@
 			</div>
 		</div>
 	</div>
+	<div id="token-container"></div>
+	<!-- Token loading and selection scripts -->
+	<script type="module" src="tokenLoader.js"></script>
+	<script type="module" src="tokenSelection.js"></script>
 	<!-- Main board logic -->
 	<script src="script.js"></script>
 </body>
