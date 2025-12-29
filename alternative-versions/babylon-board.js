@@ -178,4 +178,4 @@ function createBoard() {
 }
 
 // Initialize when page loads
-window.addEventListener('DOMContentLoaded', initScene);
+document.addEventListener('DOMContentLoaded', initScene);
