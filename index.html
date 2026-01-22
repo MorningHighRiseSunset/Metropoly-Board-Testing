@@ -2,34 +2,2919 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<meta name="viewport" content="width=800, initial-scale=1.0">
-	<title>Metropoly Board Testing</title>
-	<link rel="stylesheet" href="styles.css">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>3D Board - Three.js</title>
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+		body {
+			font-family: Arial, sans-serif;
+			background: #e8f0f8;
+			overflow: hidden;
+		}
+		#container {
+			width: 100vw;
+			height: 100vh;
+		}
+		canvas {
+			display: block;
+		}
+		#tokenSelector {
+			position: absolute;
+			left: 20px;
+			top: 50%;
+			transform: translateY(-50%);
+			background: rgba(255, 255, 255, 0.95);
+			border-radius: 15px;
+			padding: 20px;
+			box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+			backdrop-filter: blur(10px);
+			border: 2px solid rgba(255, 255, 255, 0.5);
+			min-width: 200px;
+			z-index: 1000;
+		}
+		#tokenSelector h2 {
+			margin: 0 0 15px 0;
+			color: #2c3e50;
+			font-size: 18px;
+			text-align: center;
+			border-bottom: 2px solid #3498db;
+			padding-bottom: 10px;
+		}
+		.token-grid {
+			display: grid;
+			grid-template-columns: repeat(2, 1fr);
+			gap: 10px;
+		}
+		.token-btn {
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			border: none;
+			border-radius: 10px;
+			padding: 12px 15px;
+			color: white;
+			font-weight: bold;
+			font-size: 14px;
+			cursor: pointer;
+			transition: all 0.3s ease;
+			box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+			text-transform: capitalize;
+		}
+		.token-btn:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+			background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+		}
+		.token-btn:active {
+			transform: translateY(0);
+			box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+		}
+		.token-btn:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+			transform: none;
+		}
+
+		#diceButton {
+			position: absolute;
+			left: 20px;
+			bottom: 20px;
+			padding: 12px 16px;
+			background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+			color: #fff;
+			border: none;
+			border-radius: 10px;
+			font-weight: bold;
+			font-size: 14px;
+			cursor: pointer;
+			box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+			transition: transform 0.2s ease, box-shadow 0.2s ease;
+			z-index: 1000;
+		}
+
+		#diceButton:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+		}
+
+		#diceButton:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+			transform: none;
+		}
+
+		/* Tile Interaction Panel */
+		#tileInteractionPanel {
+			position: fixed;
+			bottom: 40px;
+			left: 50%;
+			transform: translateX(-50%);
+			background: linear-gradient(135deg, rgba(52, 152, 219, 0.95) 0%, rgba(41, 128, 185, 0.95) 100%);
+			border: 3px solid #2980b9;
+			border-radius: 15px;
+			padding: 20px 30px;
+			box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+			z-index: 2000;
+			display: none;
+			min-width: 300px;
+			backdrop-filter: blur(10px);
+		}
+
+		#tileInteractionPanel.active {
+			display: block;
+			animation: slideUp 0.3s ease-out;
+		}
+
+		@keyframes slideUp {
+			from {
+				opacity: 0;
+				transform: translateX(-50%) translateY(20px);
+			}
+			to {
+				opacity: 1;
+				transform: translateX(-50%) translateY(0);
+			}
+		}
+
+		#tileInteractionPanel h3 {
+			color: #ecf0f1;
+			margin: 0 0 15px 0;
+			font-size: 18px;
+			text-align: center;
+		}
+
+		#endTurnBtn {
+			width: 100%;
+			padding: 12px 20px;
+			background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+			color: white;
+			border: none;
+			border-radius: 8px;
+			font-weight: bold;
+			font-size: 16px;
+			cursor: pointer;
+			transition: all 0.3s ease;
+			box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+		}
+
+		#endTurnBtn:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 6px 20px rgba(39, 174, 96, 0.5);
+			background: linear-gradient(135deg, #229954 0%, #1e8449 100%);
+		}
+
+		#endTurnBtn:active {
+			transform: translateY(0);
+			box-shadow: 0 2px 10px rgba(39, 174, 96, 0.3);
+		}
+
+		/* Interactable tile highlight */
+		.interactable-tile {
+			position: absolute;
+			pointer-events: none;
+		}
+
+		#diceButton:active {
+			transform: translateY(0);
+			box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+		}
+
+		/* Tile Landing UI */
+		#tileLandingUI {
+			position: fixed;
+			bottom: 40px;
+			left: 50%;
+			transform: translateX(-50%);
+			width: 400px;
+			background: rgba(255, 255, 255, 0.95);
+			border-radius: 15px;
+			padding: 30px;
+			box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+			z-index: 1500;
+			display: none;
+			border: 6px solid #999;
+		}
+
+		#tileLandingUI.active {
+			display: block;
+		}
+
+		#tileLandingUI h2 {
+			margin: 0 0 20px 0;
+			font-size: 28px;
+			color: #333;
+			text-align: center;
+		}
+
+		#tileLandingContent {
+			min-height: 100px;
+			font-size: 16px;
+			color: #555;
+			text-align: center;
+		}
+
+		/* Image Carousel */
+		#imageCarousel {
+			width: 550px;
+			height: 550px;
+			background: rgba(0, 0, 0, 0.9);
+			border-radius: 15px;
+			overflow: hidden;
+			box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8);
+			border: 3px solid #fff;
+			display: flex;
+			flex-direction: column;
+		}
+
+		#carouselImage {
+			width: 100%;
+			height: 100%;
+			object-fit: contain;
+			background: #000;
+		}
+
+		.carousel-nav {
+			position: absolute;
+			bottom: 15px;
+			left: 50%;
+			transform: translateX(-50%);
+			display: flex;
+			gap: 10px;
+			z-index: 501;
+		}
+
+		.carousel-dot {
+			width: 12px;
+			height: 12px;
+			border-radius: 50%;
+			background: rgba(255, 255, 255, 0.5);
+			cursor: pointer;
+			transition: all 0.3s ease;
+			border: 2px solid white;
+		}
+
+		.carousel-dot.active {
+			background: white;
+			transform: scale(1.3);
+		}
+
+		.carousel-dot:hover {
+			background: rgba(255, 255, 255, 0.8);
+		}
+	</style>
+</head>
+<body>
+	<div id="container"></div>
+	<div id="tokenSelector">
+		<h2>Select Tokens (2-6)</h2>
+		<div class="token-grid">
+			<button class="token-btn" data-token="Cheeseburger">Cheeseburger</button>
+			<button class="token-btn" data-token="Football">Football</button>
+			<button class="token-btn" data-token="Helicopter">Helicopter</button>
+			<button class="token-btn" data-token="RollsRoyce">Rolls Royce</button>
+			<button class="token-btn" data-token="Shoe">Shoe</button>
+			<button class="token-btn" data-token="TopHat">Top Hat</button>
+			<!-- Temporarily disabled until model fixes
+			<button class="token-btn" data-token="WhiteGirl">White Girl</button>
+			-->
+		</div>
+		<div id="playersList" style="margin-top: 15px; padding: 10px; background: #f0f0f0; border-radius: 8px; min-height: 40px;"></div>
+		<button id="startGameBtn" style="width: 100%; margin-top: 10px; padding: 12px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; display: none;">Start Game</button>
+	</div>
+	<div id="turnDisplay" style="position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 15px 20px; border-radius: 10px; font-size: 16px; font-weight: bold; z-index: 1000; display: none;"></div>
+	<button id="diceButton">Roll Dice</button>
+	<button id="toggleDevMode" style="position: absolute; left: 20px; top: 140px; padding: 6px 10px; background: #666; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 11px; z-index: 999;">Dev</button>
+	<div id="devModePanel" style="position: absolute; left: 20px; top: 180px; background: rgba(200, 100, 100, 0.95); border-radius: 8px; padding: 8px; min-width: 140px; z-index: 999; display: none;">
+		<h4 style="margin: 0 0 8px 0; color: white; font-size: 12px;">Test Minigames</h4>
+		<button id="testSlotMachine" style="width: 100%; margin: 3px 0; padding: 5px; background: #FF6B6B; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">Slot (11)</button>
+		<button id="testPoker" style="width: 100%; margin: 3px 0; padding: 5px; background: #FF6B6B; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">Poker (13)</button>
+		<button id="testRoulette" style="width: 100%; margin: 3px 0; padding: 5px; background: #FF6B6B; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">Roulette (23)</button>
+		<button id="testBlackjack" style="width: 100%; margin: 3px 0; padding: 5px; background: #FF6B6B; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">BJ (31)</button>
+		<button id="testBaccarat" style="width: 100%; margin: 3px 0; padding: 5px; background: #FF6B6B; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">Baccarat (32)</button>
+		<button id="testCraps" style="width: 100%; margin: 3px 0; padding: 5px; background: #FF6B6B; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">Craps (36)</button>
+	</div>
+	<div id="diceResult" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 72px; font-weight: bold; color: #EAA14D; text-shadow: 0 0 10px rgba(0,0,0,0.5); opacity: 0; pointer-events: none; z-index: 1000; transition: opacity 0.5s ease;">
+		<span id="diceResultValue">0</span>
+	</div>
+	<div id="tileInteractionPanel">
+		<h3>Tile Details</h3>
+		<p style="color: #ecf0f1; margin: 10px 0; text-align: center; font-size: 14px;"></p>
+		<button id="endTurnBtn">End Turn</button>
+	</div>
+	<div id="imageCarousel">
+		<img id="carouselImage" src="" alt="Carousel Image">
+		<div class="carousel-nav"></div>
+	</div>
+	<div id="minigameModal" style="position: fixed; top: 50%; right: 20px; transform: translateY(-50%); width: 680px; height: 480px; background: rgba(20,20,20,0.95); z-index: 1500; display: none; border-radius: 12px; overflow: hidden; box-shadow: 0 0 40px rgba(0,0,0,0.8); border: 3px solid #ffd700;">
+		<div id="minigameContainer" style="width: 100%; height: 100%; position: relative; overflow: hidden; transform: scale(0.85); transform-origin: top center; display: flex; align-items: center; justify-content: center;"></div>
+		<button id="closeMinigame" style="position: absolute; top: 12px; right: 12px; padding: 8px 16px; background: #27ae60; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; z-index: 2001; font-size: 12px;">End Turn</button>
+	</div>
+	<div id="tileLandingUI">
+		<h2 id="tileLandingName"></h2>
+		<div id="tileLandingContent"></div>
+		<button id="endTurnBtnLanding" style="width: 100%; margin-top: 15px; padding: 12px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">End Turn</button>
+	</div>
 	<script type="importmap">
 		{
 			"imports": {
 				"three": "https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js",
-				"three/addons/": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/"
+				"three/addons/": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/",
+				"cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
 			}
 		}
 	</script>
-</head>
-<body>
-	<div class="container">
-		<div class="board-3d">
-			<div class="board-spaces"></div>
-			<div class="center-area">
-				<div class="center-content">
-					<!-- Center area for logo or info -->
-				</div>
-			</div>
-		</div>
-	</div>
-	<div id="token-container"></div>
-	<!-- Token loading and selection scripts -->
-	<script type="module" src="tokenLoader.js"></script>
-	<script type="module" src="tokenSelection.js"></script>
-	<!-- Main board logic -->
-	<script src="script.js"></script>
+	<script type="module">
+		import * as THREE from 'three';
+		import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
+				const carouselImagePaths = [
+					'./Images/Wynn_2_(2).jpg',
+					'./Images/download.jpg',
+					'./Images/download (1).jpg',
+					'./Images/images.jpg',
+					'./Images/eater_vegas_large.jpg',
+					'./Images/hq720.jpg',
+					'./Images/230613231941-04-knights-stanley-cup-061323.jpg',
+					'./Images/693695_050215-ap-mayweather-img.jpg',
+					'./Images/berry1.webp',
+					'./Images/Las_Vegas_Strip_Map_Blog.jpg',
+					'./Images/BetMGM-Jamie-Foxx.webp',
+					'./Images/Adele-Slams-Fan-Who-Yelled-Pride-Sucks-During-Concert-02.webp',
+					'./Images/what-happens-in-vegas-stays-in-vegas.jpg'
+				];
+				let currentCarouselIndex = 0;
+				let carouselInterval = null;
+				let carouselMesh = null;
+
+		function loadImageAsTexture(imageUrl) {
+			return new Promise((resolve, reject) => {
+				const textureLoader = new THREE.TextureLoader();
+				textureLoader.load(imageUrl, (texture) => {
+					texture.colorSpace = THREE.SRGBColorSpace;
+					resolve(texture);
+				}, undefined, reject);
+			});
+		}
+
+		async function initCarousel() {
+			// Create a plane geometry the size of the center square
+			const centerSquareSize = boardSize - 2 * cornerSize; // Should be ~604
+			const planeSize = centerSquareSize - 40; // Smaller to account for gap/border
+			
+			const geometry = new THREE.PlaneGeometry(planeSize, planeSize);
+			
+			// Create material with first image
+			const initialTexture = await loadImageAsTexture(carouselImagePaths[0]);
+			const material = new THREE.MeshBasicMaterial({ 
+				map: initialTexture,
+				side: THREE.DoubleSide
+			});
+			
+			// Create mesh and position it at center of board
+			carouselMesh = new THREE.Mesh(geometry, material);
+			carouselMesh.position.set(0, tileY + 2, 0);
+			carouselMesh.rotation.x = -Math.PI / 2; // Rotate to face up
+			scene.add(carouselMesh);
+			
+			console.log('Carousel created with size:', planeSize);
+
+			// Start auto-rotation
+			startCarouselRotation();
+		}
+
+		async function updateCarouselImage() {
+			try {
+				const newTexture = await loadImageAsTexture(carouselImagePaths[currentCarouselIndex]);
+				carouselMesh.material.map = newTexture;
+				carouselMesh.material.needsUpdate = true;
+			} catch (err) {
+				console.error('Failed to load image:', err);
+			}
+		}
+
+		function goToSlide(index) {
+			currentCarouselIndex = index;
+			updateCarouselImage();
+			// Reset interval when manually clicking
+			clearInterval(carouselInterval);
+			startCarouselRotation();
+		}
+
+		function nextSlide() {
+			currentCarouselIndex = (currentCarouselIndex + 1) % carouselImagePaths.length;
+			updateCarouselImage();
+		}
+
+		function startCarouselRotation() {
+			carouselInterval = setInterval(nextSlide, 5000); // Change image every 5 seconds
+		}
+
+		// Show tile landing UI when player lands on a tile
+		// Ensure selectedPlayers is declared before any function that uses it
+		// (declaration moved to multiplayer game state section below)
+		function showTileLandingUI(spaceNumber, tokenName) {
+			// Debug logging
+			console.log(`🎯 showTileLandingUI called: space=${spaceNumber}, token=${tokenName}`);
+			console.log(`   selectedPlayers=${JSON.stringify(selectedPlayers)}, currentPlayerIndex=${currentPlayerIndex}, myPlayerIndex=${myPlayerIndex}`);
+			console.log(`   indexOf(${tokenName})=${selectedPlayers.indexOf(tokenName)}`);
+			
+			// Only show UI if it's the current player's turn AND this is my player
+			if (selectedPlayers.indexOf(tokenName) !== currentPlayerIndex) {
+				console.log(`   ❌ Not current player's turn, returning`);
+				return;
+			}
+			if (currentPlayerIndex !== myPlayerIndex) {
+				console.log(`   ❌ Not my turn (I am player ${myPlayerIndex}, current is ${currentPlayerIndex}), returning`);
+				return;
+			}
+			console.log(`   ✅ This is my turn, showing UI`);
+
+			const tileNames = ['GO', 'Las Vegas Raiders', 'Community Cards', 'Las Vegas Grand Prix', 'Income Tax', 'Las Vegas Monorail', 'Speed Vegas Off Roading', 'Chance', 'Las Vegas Golden Knights', 'Maverick Helicopter Rides',
+				'JAIL', 'Brothel', 'Electric Company', 'Bet MGM', 'Las Vegas Monorail', 'Bellagio', 'Las Vegas Aces', 'Community Cards', 'Horseback Riding', 'Resorts World Theatre',
+				'FREE PARKING', 'Hard Rock Hotel', 'Chance', 'Wynn Las Vegas', 'Shriners Children\'s Open', 'Bachelor & Bachelorette Parties', 'Las Vegas Little White Wedding Chapel', 'Sphere', 'Community Cards', 'Water Works',
+				'GO TO JAIL', 'Caesars Palace', 'Santa Fe Hotel and Casino', 'Chance', 'Luxury Tax', 'House of Blues', 'The Cosmopolitan', 'Community Cards', 'Las Vegas Monorail', 'Shriners Children\'s Open'];
+			
+			const propertyColors = [0x333333, 0x8B6F47, 0x999999, 0x8B6F47, 0x999999, 0x666666, 0x6B8E9F, 0x999999, 0x6B8E9F, 0x6B8E9F,
+				0x333333, 0x9B7B9B, 0x999999, 0x9B7B9B, 0x9B7B9B, 0x666666, 0x9B7B4D, 0x999999, 0x9B7B4D, 0x9B7B4D,
+				0x333333, 0x9B4D4D, 0x999999, 0x9B4D4D, 0x9B4D4D, 0x666666, 0x9B9B4D, 0x9B9B4D, 0x999999, 0x9B9B4D,
+				0x333333, 0x4D7B4D, 0x4D7B4D, 0x999999, 0x4D7B4D, 0x666666, 0x999999, 0x2F4D7B, 0x999999, 0x2F4D7B];
+			
+			const ui = document.getElementById('tileLandingUI');
+			const nameEl = document.getElementById('tileLandingName');
+			const contentEl = document.getElementById('tileLandingContent');
+			
+			nameEl.textContent = tileNames[spaceNumber] || 'Tile';
+			// Clear previous content
+			contentEl.innerHTML = '';
+
+			const borderColor = propertyColors[spaceNumber] || 0x999999;
+			const hexColor = '#' + borderColor.toString(16).padStart(6, '0');
+			ui.style.borderColor = hexColor;
+
+			// Casino tile mapping: tile index -> minigame folder
+			const casinoMinigames = {
+				11: { folder: 'slotMachine', file: 'index.html' }, // Brothel (Slot Machine)
+				13: { folder: 'PokerFP', file: 'index.html' }, // Bet MGM
+				23: { folder: 'Roulette', file: 'index.html' }, // Wynn Las Vegas
+				31: { folder: 'BlackJack', file: 'index.html' }, // Caesars Palace
+				32: { folder: 'BlackJack/Baccarat', file: 'index.html' }, // Santa Fe Hotel and Casino (Baccarat)
+				36: { folder: 'Craps', file: 'index.html' }, // The Cosmopolitan
+			};
+
+			// If this is a casino tile, show minigame in full screen modal
+			if (casinoMinigames[spaceNumber]) {
+				const minigame = casinoMinigames[spaceNumber];
+				const minigameContainer = document.getElementById('minigameContainer');
+				minigameContainer.innerHTML = '';
+                
+				// Create minigame iframe with improved sizing
+				const gameFrame = document.createElement('iframe');
+				gameFrame.src = `./${minigame.folder}/${minigame.file}`;
+				gameFrame.style.width = '600px';
+				gameFrame.style.height = '400px';
+				gameFrame.style.border = 'none';
+				gameFrame.style.background = '#fff';
+				gameFrame.allow = 'autoplay; encrypted-media';
+				gameFrame.style.display = 'block';
+				gameFrame.style.margin = '0 auto';
+				minigameContainer.appendChild(gameFrame);
+                
+				// Show minigame modal alongside tile UI
+				const modal = document.getElementById('minigameModal');
+				modal.style.display = 'flex';
+				modal.style.justifyContent = 'center';
+				modal.style.alignItems = 'center';
+				modal.style.width = '650px';
+				modal.style.height = '450px';
+				modal.style.left = '50%';
+				modal.style.top = '50%';
+				modal.style.transform = 'translate(-50%, -50%)';
+                
+				// Keep tile landing UI visible - minigame shows alongside it
+				ui.classList.add('active');
+			} else {
+				// Not a casino tile: show normal tile UI only
+				const tileName = tileNames[spaceNumber];
+				const videoUrl = window.tileVideos ? window.tileVideos[spaceNumber] : null;
+				if (tileName && videoUrl && videoUrl !== '' && videoUrl !== undefined) {
+					let url = videoUrl;
+					if (Array.isArray(videoUrl)) {
+						url = videoUrl[Math.floor(Math.random() * videoUrl.length)];
+					}
+					if (url && url.trim() !== '') {
+						const videoContainer = document.createElement('div');
+						videoContainer.style.cssText = `
+							position: relative;
+							width: 100%;
+							padding-bottom: 56.25%;
+							background: #000;
+							border-radius: 10px;
+							overflow: hidden;
+							margin-bottom: 20px;
+						`;
+						const video = document.createElement('video');
+						video.src = url;
+						video.controls = true;
+						video.autoplay = true;
+						video.style.cssText = `
+							position: absolute;
+							top: 0;
+							left: 0;
+							width: 100%;
+							height: 100%;
+						`;
+						videoContainer.appendChild(video);
+						contentEl.appendChild(videoContainer);
+					} else {
+						const noVideoMsg = document.createElement('p');
+						noVideoMsg.textContent = 'No video link available for this tile yet.';
+						noVideoMsg.style.cssText = `
+							text-align: center;
+							color: #999;
+							margin: 20px 0;
+							font-style: italic;
+						`;
+						contentEl.appendChild(noVideoMsg);
+					}
+				} else {
+					contentEl.textContent = '';
+				}
+
+				// --- Add Buy or Pay Rent button for property tiles ---
+				// Custom button labels for each property
+				const propertyButtonLabels = {
+					6: { buy: 'Book Off-Road Experience', rent: 'Pay Track Fee' },
+					9: { buy: 'Book Helicopter Ride', rent: 'Pay Landing Fee' },
+					15: { buy: 'Reserve Bellagio Suite', rent: 'Pay Suite Fee' },
+					22: { buy: 'Buy Hard Rock Timeshare', rent: 'Pay Timeshare Rent' },
+					23: { buy: 'Book Wynn Stay', rent: 'Pay Room Fee' },
+					// Add more custom labels as needed
+				};
+				if (spaceNumber > 0 && spaceNumber < 40 && !casinoMinigames[spaceNumber]) {
+					const ownerList = Object.entries(window.moneySystem.players).filter(([pid, pdata]) => pdata.properties.includes(spaceNumber));
+					const isOwned = ownerList.length > 0;
+					const labels = propertyButtonLabels[spaceNumber] || { buy: 'Buy Property', rent: 'Pay Rent' };
+					if (!isOwned) {
+						const buyBtn = document.createElement('button');
+						buyBtn.textContent = labels.buy;
+						buyBtn.style.cssText = 'width: 98%; margin: 8px 1%; padding: 10px; background: #2980b9; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;';
+						buyBtn.onclick = function() {
+							const cost = 200;
+							window.moneySystem.subtractMoney(tokenName, cost);
+							window.moneySystem.addProperty(tokenName, spaceNumber);
+							alert(`You bought ${tileName} for $${cost}!`);
+							showTileLandingUI(spaceNumber, tokenName); // Refresh UI
+						};
+						contentEl.appendChild(buyBtn);
+					} else {
+						const rentBtn = document.createElement('button');
+						rentBtn.textContent = labels.rent;
+						rentBtn.style.cssText = 'width: 98%; margin: 8px 1%; padding: 10px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;';
+						rentBtn.onclick = function() {
+							const rent = 50;
+							window.moneySystem.subtractMoney(tokenName, rent);
+							// Optionally pay owner: window.moneySystem.addMoney(ownerList[0][0], rent);
+							alert(`You paid $${rent} rent for ${tileName}.`);
+						};
+						contentEl.appendChild(rentBtn);
+					}
+				}
+			}
+
+			ui.classList.add('active');
+		}
+
+		// WebSocket connection for multiplayer
+		const ws = new WebSocket(`ws://${window.location.host}`);
+		let wsConnected = false;
+
+		ws.addEventListener('open', () => {
+			wsConnected = true;
+			console.log('✅ Connected to multiplayer server at', window.location.host);
+		});
+
+		ws.addEventListener('message', (event) => {
+			try {
+				const data = JSON.parse(event.data);
+				handleServerMessage(data);
+			} catch (err) {
+				console.error('❌ Error parsing message:', err);
+			}
+		});
+
+		ws.addEventListener('close', () => {
+			wsConnected = false;
+			console.log('❌ Disconnected from server');
+		});
+
+		ws.addEventListener('error', (event) => {
+			console.error('❌ WebSocket error:', event);
+		});
+
+		function sendToServer(message) {
+			if (wsConnected) {
+				ws.send(JSON.stringify(message));
+			} else {
+				console.warn('⚠️ Not connected to server, message not sent:', message);
+			}
+		}
+
+		// Scene setup
+		const scene = new THREE.Scene();
+		scene.background = new THREE.Color(0xe8f0f8);
+		const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+		const renderer = new THREE.WebGLRenderer({ antialias: true });
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.setPixelRatio(window.devicePixelRatio);
+		renderer.shadowMap.enabled = true;
+		renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+		document.getElementById('container').appendChild(renderer.domElement);
+
+		// CSS2DRenderer for text labels
+		const labelRenderer = new CSS2DRenderer();
+		labelRenderer.setSize(window.innerWidth, window.innerHeight);
+		labelRenderer.domElement.style.position = 'absolute';
+		labelRenderer.domElement.style.top = '0';
+		labelRenderer.domElement.style.pointerEvents = 'none';
+		document.getElementById('container').appendChild(labelRenderer.domElement);
+
+		// Lighting - enhanced for better 3D appearance, smoother shadows
+		const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+		scene.add(ambientLight);
+		
+		// Main directional light with shadows - softer to reduce glitches
+		const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+		directionalLight.position.set(5, 15, 5);
+		directionalLight.castShadow = true;
+		directionalLight.shadow.mapSize.width = 2048;
+		directionalLight.shadow.mapSize.height = 2048;
+		directionalLight.shadow.camera.near = 0.5;
+		directionalLight.shadow.camera.far = 2000;
+		directionalLight.shadow.camera.left = -500;
+		directionalLight.shadow.camera.right = 500;
+		directionalLight.shadow.camera.top = 500;
+		directionalLight.shadow.camera.bottom = -500;
+		directionalLight.shadow.bias = -0.0001; // Reduce shadow acne
+		directionalLight.shadow.normalBias = 0.02; // Reduce shadow glitches
+		scene.add(directionalLight);
+		
+		// Fill light from opposite side - softer
+		const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.35);
+		directionalLight2.position.set(-5, 8, -5);
+		scene.add(directionalLight2);
+		
+		// Rim light for depth
+		const rimLight = new THREE.DirectionalLight(0xffffff, 0.25);
+		rimLight.position.set(0, 5, -10);
+		scene.add(rimLight);
+		
+		// Hemisphere light for more natural lighting
+		const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.4);
+		hemisphereLight.position.set(0, 20, 0);
+		scene.add(hemisphereLight);
+
+		// Camera position - look down at flat board from angle
+		camera.position.set(900, 900, 900);
+		camera.lookAt(0, 0, 0);
+
+		// Controls
+		const controls = new OrbitControls(camera, renderer.domElement);
+		controls.enableDamping = true;
+		controls.dampingFactor = 0.05;
+		controls.minDistance = 400;
+		controls.maxDistance = 2000;
+		controls.maxPolarAngle = Math.PI / 2;
+
+		// Board dimensions
+		const boardSize = 800;
+		const cornerSize = 98;
+		const numSlivers = 9;
+		const sliverLength = (boardSize - 2 * cornerSize) / numSlivers;
+		const tileThickness = 8; // Increased thickness for better 3D appearance
+		const tileY = tileThickness / 2; // Tiles sit on the XZ plane (flat)
+
+		// Tile names for all 40 spaces
+		const tileNames = [
+			'GO',
+			'Las Vegas Raiders',
+			'Community Cards',
+			'Las Vegas Grand Prix',
+			'Income Tax',
+			'Las Vegas Monorail',
+			'Speed Vegas Off Roading',
+			'Chance',
+			'Las Vegas Golden Knights',
+			'Maverick Helicopter Rides',
+			'JAIL',
+			'Brothel',
+			'Electric Company',
+			'Bet MGM',
+			'Las Vegas Monorail',
+			'Bellagio',
+			'Las Vegas Aces',
+			'Community Cards',
+			'Horseback Riding',
+			'Resorts World Theatre',
+			'FREE PARKING',
+			'Chance',
+			'Hard Rock Hotel',
+			'Wynn Las Vegas',
+			'Shriners Children\'s Open',
+			'Bachelor & Bachelorette Parties',
+			'Las Vegas Little White Wedding Chapel',
+			'Sphere',
+			'Community Cards',
+			'Water Works',
+			'GO TO JAIL',
+			'Caesars Palace',
+			'Santa Fe Hotel and Casino',
+			'Chance',
+			'Luxury Tax',
+			'House of Blues',
+			'The Cosmopolitan',
+			'Community Cards',
+			'Las Vegas Monorail',
+			'Speed Vegas Off Roading'
+		];
+
+		// Store all tiles for click detection
+		const tilesMap = new Map();
+
+		// Dull Monopoly property colors - correct groupings
+		const propertyColors = {
+			0: 0x333333,   // GO - dark gray
+			1: 0x8B6F47,   // Brown
+			2: 0x999999,   // Community Chest - gray
+			3: 0x8B6F47,   // Brown
+			4: 0x999999,   // Income Tax - gray
+			5: 0x666666,   // Railroad - dark gray
+			6: 0x6B8E9F,   // Light Blue
+			7: 0x999999,   // Chance - gray
+			8: 0x6B8E9F,   // Light Blue
+			9: 0x6B8E9F,   // Light Blue
+			10: 0x333333,  // Jail - dark gray
+			11: 0x9B7B9B,  // Pink
+			12: 0x999999,  // Utility - gray
+			13: 0x9B7B9B,  // Pink
+			14: 0x9B7B9B,  // Pink
+			15: 0x666666,  // Railroad - dark gray
+			16: 0x9B7B4D,  // Orange
+			17: 0x999999,  // Community Chest - gray
+			18: 0x9B7B4D,  // Orange
+			19: 0x9B7B4D,  // Orange
+			20: 0x333333,  // Free Parking - dark gray
+			21: 0x9B4D4D,  // Red
+			22: 0x999999,  // Chance - gray
+			23: 0x9B4D4D,  // Red
+			24: 0x9B4D4D,  // Red
+			25: 0x666666,  // Railroad - dark gray
+			26: 0x9B9B4D,  // Yellow
+			27: 0x9B9B4D,  // Yellow
+			28: 0x999999,  // Utility - gray
+			29: 0x9B9B4D,  // Yellow
+			30: 0x333333,  // Go To Jail - dark gray
+			31: 0x4D7B4D,  // Green
+			32: 0x4D7B4D,  // Green
+			33: 0x999999,  // Community Chest - gray
+			34: 0x4D7B4D,  // Green
+			35: 0x666666,  // Railroad - dark gray
+			36: 0x999999,  // Chance - gray
+			37: 0x2F4D7B,  // Dark Blue
+			38: 0x999999,  // Luxury Tax - gray
+			39: 0x2F4D7B   // Dark Blue
+		};
+
+		// Materials - enhanced for better 3D appearance
+		const tileMaterial = new THREE.MeshStandardMaterial({ 
+			color: 0xf8f9fa,
+			metalness: 0.15,
+			roughness: 0.75,
+			flatShading: false
+		});
+		const cornerMaterial = new THREE.MeshStandardMaterial({ 
+			color: 0xb0b0b0,
+			metalness: 0.15,
+			roughness: 0.75,
+			flatShading: false
+		});
+		
+		// Edge material for tile separation - softer look
+		const edgeMaterial = new THREE.MeshStandardMaterial({ 
+			color: 0x495057,
+			metalness: 0.2,
+			roughness: 0.7
+		});
+		const centerMaterial = new THREE.MeshStandardMaterial({ 
+			color: 0x2c3e50,
+			transparent: true,
+			opacity: 0.4,
+			metalness: 0.1,
+			roughness: 0.9,
+			side: THREE.DoubleSide
+		});
+
+		// Helper function to create text labels
+		function createTextLabel(text, position, options = {}) {
+			const div = document.createElement('div');
+			div.className = 'tile-label';
+			div.textContent = text;
+			div.style.color = '#000000';
+			div.style.fontSize = options.fontSize || '12px';
+			div.style.fontWeight = 'bold';
+			div.style.textAlign = 'center';
+			div.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+			div.style.padding = '3px 6px';
+			div.style.borderRadius = '3px';
+			div.style.whiteSpace = 'nowrap';
+			div.style.maxWidth = options.maxWidth || '100px';
+			div.style.overflow = 'hidden';
+			div.style.textOverflow = 'ellipsis';
+			div.style.pointerEvents = 'none';
+			div.style.userSelect = 'none';
+			div.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+			
+			const label = new CSS2DObject(div);
+			const yOffset = options.yOffset !== undefined ? options.yOffset : 8;
+			label.position.set(position.x, position.y + yOffset, position.z);
+			if (options.rotation) {
+				label.rotation.y = options.rotation;
+			}
+			return label;
+		}
+
+		// Create canvas texture dice (from z-dice.js style)
+		function createVectorDiceTexture(number, colorHex) {
+			const size = 256;
+			const canvas = document.createElement("canvas");
+			canvas.width = size;
+			canvas.height = size;
+			const ctx = canvas.getContext("2d");
+
+			// Background color
+			ctx.fillStyle = colorHex;
+			ctx.fillRect(0, 0, size, size);
+
+			const isTraditional = (colorHex === "#FFFFFF");
+
+			let dotColor = "#FFFFFF";
+			if (isTraditional) {
+				if (number === 1) dotColor = "#E03E3E";
+				else if (number === 4) dotColor = "#E03E3E";
+				else dotColor = "#331e18";
+			} else {
+				dotColor = "#FFFFFF";
+			}
+
+			ctx.fillStyle = dotColor;
+
+			const dotSize = size / 5;
+			const currentDotSize = (isTraditional && number === 1) ? dotSize * 1.5 : dotSize;
+
+			const center = size / 2;
+			const q1 = size / 4;
+			const q3 = (size * 3) / 4;
+
+			function drawDot(x, y) {
+				ctx.beginPath();
+				ctx.arc(x, y, currentDotSize / 2, 0, Math.PI * 2);
+				ctx.fill();
+			}
+
+			if (number === 1) drawDot(center, center);
+			else if (number === 2) { drawDot(q1, q1); drawDot(q3, q3); }
+			else if (number === 3) { drawDot(q1, q1); drawDot(center, center); drawDot(q3, q3); }
+			else if (number === 4) { drawDot(q1, q1); drawDot(q3, q1); drawDot(q1, q3); drawDot(q3, q3); }
+			else if (number === 5) { drawDot(q1, q1); drawDot(center, center); drawDot(q1, q3); drawDot(q3, q3); drawDot(q3, q1); }
+			else if (number === 6) { drawDot(q1, q1); drawDot(q3, q1); drawDot(q1, center); drawDot(q3, center); drawDot(q1, q3); drawDot(q3, q3); }
+			return new THREE.CanvasTexture(canvas);
+		}
+
+		// Helper to create a flat 3D tile with visible edges and better depth (box on XZ plane)
+		function createTile(width, depth, thickness, material, position, tileId, tileName, isCorner = false) {
+			// BoxGeometry: width (X), height (Y), depth (Z)
+			// For flat tiles: width (X), thickness (Y), depth (Z)
+			const group = new THREE.Group();
+			group.name = `tile_${tileId}`; // Set name for highlighting
+			
+			// Store tile information in userData
+			group.userData.tileId = tileId;
+			group.userData.tileName = tileName;
+			group.userData.coordinates = {
+				x: position.x,
+				y: position.y,
+				z: position.z
+			};
+			
+			// Main tile with slight bevel effect for smoother look
+			const geometry = new THREE.BoxGeometry(width * 0.99, thickness, depth * 0.99);
+			// Ensure material supports emissive for highlighting
+			const tileMaterial = material.clone();
+			tileMaterial.emissive = new THREE.Color(0x000000);
+			tileMaterial.emissiveIntensity = 0;
+			const mesh = new THREE.Mesh(geometry, tileMaterial);
+			mesh.name = `tile_${tileId}`; // Set name for raycasting
+			mesh.castShadow = true;
+			mesh.receiveShadow = true;
+			// Store tile info in mesh as well for click detection
+			mesh.userData.tileId = tileId;
+			mesh.userData.tileName = tileName;
+			mesh.userData.coordinates = group.userData.coordinates;
+			group.add(mesh);
+			
+			// Add subtle border edges to make tiles visible as separate pieces
+			const edgeThickness = 1.5;
+			// Top edge
+			const topEdge = new THREE.Mesh(
+				new THREE.BoxGeometry(width, edgeThickness, edgeThickness),
+				edgeMaterial
+			);
+			topEdge.position.set(0, thickness/2 + edgeThickness/2, depth/2);
+			topEdge.castShadow = true;
+			topEdge.userData.tileId = tileId;
+			topEdge.userData.tileName = tileName;
+			topEdge.userData.coordinates = group.userData.coordinates;
+			group.add(topEdge);
+			
+			// Bottom edge
+			const bottomEdge = new THREE.Mesh(
+				new THREE.BoxGeometry(width, edgeThickness, edgeThickness),
+				edgeMaterial
+			);
+			bottomEdge.position.set(0, thickness/2 + edgeThickness/2, -depth/2);
+			bottomEdge.castShadow = true;
+			bottomEdge.userData.tileId = tileId;
+			bottomEdge.userData.tileName = tileName;
+			bottomEdge.userData.coordinates = group.userData.coordinates;
+			group.add(bottomEdge);
+			
+			// Left edge
+			const leftEdge = new THREE.Mesh(
+				new THREE.BoxGeometry(edgeThickness, edgeThickness, depth),
+				edgeMaterial
+			);
+			leftEdge.position.set(-width/2, thickness/2 + edgeThickness/2, 0);
+			leftEdge.castShadow = true;
+			leftEdge.userData.tileId = tileId;
+			leftEdge.userData.tileName = tileName;
+			leftEdge.userData.coordinates = group.userData.coordinates;
+			group.add(leftEdge);
+			
+			// Right edge
+			const rightEdge = new THREE.Mesh(
+				new THREE.BoxGeometry(edgeThickness, edgeThickness, depth),
+				edgeMaterial
+			);
+			rightEdge.position.set(width/2, thickness/2 + edgeThickness/2, 0);
+			rightEdge.castShadow = true;
+			rightEdge.userData.tileId = tileId;
+			rightEdge.userData.tileName = tileName;
+			rightEdge.userData.coordinates = group.userData.coordinates;
+			group.add(rightEdge);
+			
+			group.position.set(position.x, position.y, position.z);
+			
+			// Corner tiles text is now invisible (removed label creation)
+			
+			// Store tile in map for easy access
+			tilesMap.set(tileId, group);
+			
+			return group;
+		}
+
+		// Helper function to create text texture for tiles
+		function createTextTexture(text, width = 512, height = 512) {
+			const canvas = document.createElement('canvas');
+			canvas.width = width;
+			canvas.height = height;
+			const ctx = canvas.getContext('2d');
+			
+			// Clear canvas
+			ctx.fillStyle = 'rgba(255, 255, 255, 0)';
+			ctx.fillRect(0, 0, width, height);
+			
+			// Draw text - scale font size based on canvas size
+			let baseFontSize = (width / 512) * 60;
+			ctx.fillStyle = '#000000';
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'middle';
+			
+			// Wrap text to fit width
+			const words = text.split(' ');
+			const lines = [];
+			let currentLine = '';
+			
+			// Try to fit text, reducing font size if needed
+			let attempts = 0;
+			while (attempts < 5) {
+				ctx.font = `bold ${baseFontSize}px Arial`;
+				lines.length = 0;
+				currentLine = '';
+				let canFit = true;
+				
+				for (let word of words) {
+					const testLine = currentLine ? currentLine + ' ' + word : word;
+					const metrics = ctx.measureText(testLine);
+					if (metrics.width > width * 0.85) {
+						if (currentLine) {
+							lines.push(currentLine);
+							currentLine = word;
+						} else {
+							lines.push(word);
+							currentLine = '';
+						}
+					} else {
+						currentLine = testLine;
+					}
+				}
+				if (currentLine) lines.push(currentLine);
+				
+				// Check if text fits vertically
+				const lineHeight = baseFontSize * 1.2;
+				const totalHeight = lines.length * lineHeight;
+				if (totalHeight > height * 0.85) {
+					baseFontSize *= 0.8;
+					attempts++;
+				} else {
+					break;
+				}
+			}
+			
+			// Draw the fitted text
+			ctx.font = `bold ${baseFontSize}px Arial`;
+			const lineHeight = baseFontSize * 1.2;
+			const totalHeight = lines.length * lineHeight;
+			const startY = height / 2 - (lines.length - 1) * lineHeight / 2;
+			
+			lines.forEach((line, i) => {
+				ctx.fillText(line, width / 2, startY + i * lineHeight);
+			});
+			
+			const texture = new THREE.CanvasTexture(canvas);
+			texture.colorSpace = THREE.SRGBColorSpace;
+			return texture;
+		}
+
+		// Create corner tiles (flat on XZ plane)
+		const corners = [
+			{ space: 0, name: 'GO', pos: { x: boardSize/2 - cornerSize/2, z: -(boardSize/2 - cornerSize/2), y: tileY } },
+			{ space: 10, name: 'JAIL', pos: { x: boardSize/2 - cornerSize/2, z: boardSize/2 - cornerSize/2, y: tileY } },
+			{ space: 20, name: 'FREE\nPARKING', pos: { x: -(boardSize/2 - cornerSize/2), z: boardSize/2 - cornerSize/2, y: tileY } },
+			{ space: 30, name: 'GO TO\nJAIL', pos: { x: -(boardSize/2 - cornerSize/2), z: -(boardSize/2 - cornerSize/2), y: tileY } }
+		];
+
+		corners.forEach(corner => {
+			const tile = createTile(cornerSize, cornerSize, tileThickness, cornerMaterial, corner.pos, corner.space, tileNames[corner.space], true);
+			
+			// Create and add text overlay to the top face of the corner tile
+			const textTexture = createTextTexture(corner.name);
+			const textMaterial = new THREE.MeshBasicMaterial({ map: textTexture, transparent: true });
+			const textGeometry = new THREE.PlaneGeometry(cornerSize * 0.9, cornerSize * 0.9);
+			const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+			textMesh.position.set(corner.pos.x, corner.pos.y + tileThickness / 2 + 0.5, corner.pos.z);
+			textMesh.rotation.x = -Math.PI / 2; // Rotate to face up
+			scene.add(textMesh);
+			
+			scene.add(tile);
+		});
+
+		// Create side tiles (flat on XZ plane)
+		// Bottom row (spaces 1-9, right to left)
+		for (let i = 1; i <= numSlivers; i++) {
+			const spaceNumber = i;
+			const x = boardSize/2 - cornerSize - (i - 0.5) * sliverLength;
+			const z = -(boardSize/2 - cornerSize/2);
+			const coloredMaterial = tileMaterial.clone();
+			coloredMaterial.color.setHex(propertyColors[spaceNumber]);
+			const tile = createTile(sliverLength, cornerSize, tileThickness, coloredMaterial, { x, z, y: tileY }, spaceNumber, tileNames[spaceNumber]);
+			// Add text label
+			const textTexture = createTextTexture(tileNames[spaceNumber], 256, 256);
+			const textMaterial = new THREE.MeshBasicMaterial({ map: textTexture, transparent: true });
+			const textGeometry = new THREE.PlaneGeometry(sliverLength * 0.9, cornerSize * 0.9);
+			const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+			textMesh.position.set(x, tileY + tileThickness / 2 + 0.5, z);
+			textMesh.rotation.x = -Math.PI / 2;
+			scene.add(textMesh);
+			scene.add(tile);
+		}
+
+		// Left side (spaces 11-19, bottom to top)
+		for (let i = 1; i <= numSlivers; i++) {
+			const spaceNumber = 10 + i;
+			const x = -(boardSize/2 - cornerSize/2);
+			const z = -(boardSize/2 - cornerSize) + (i - 0.5) * sliverLength;
+			const coloredMaterial = tileMaterial.clone();
+			coloredMaterial.color.setHex(propertyColors[spaceNumber]);
+			const tile = createTile(cornerSize, sliverLength, tileThickness, coloredMaterial, { x, z, y: tileY }, spaceNumber, tileNames[spaceNumber]);
+			// Add text label
+			const textTexture = createTextTexture(tileNames[spaceNumber], 256, 256);
+			const textMaterial = new THREE.MeshBasicMaterial({ map: textTexture, transparent: true });
+			const textGeometry = new THREE.PlaneGeometry(cornerSize * 0.9, sliverLength * 0.9);
+			const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+			textMesh.position.set(x, tileY + tileThickness / 2 + 0.5, z);
+			textMesh.rotation.x = -Math.PI / 2;
+			scene.add(textMesh);
+			scene.add(tile);
+		}
+
+		// Top row (spaces 21-29, left to right)
+		for (let i = 1; i <= numSlivers; i++) {
+			const spaceNumber = 20 + i;
+			const x = -(boardSize/2 - cornerSize) + (i - 0.5) * sliverLength;
+			const z = boardSize/2 - cornerSize/2;
+			const coloredMaterial = tileMaterial.clone();
+			coloredMaterial.color.setHex(propertyColors[spaceNumber]);
+			const tile = createTile(sliverLength, cornerSize, tileThickness, coloredMaterial, { x, z, y: tileY }, spaceNumber, tileNames[spaceNumber]);
+			// Add text label
+			const textTexture = createTextTexture(tileNames[spaceNumber], 256, 256);
+			const textMaterial = new THREE.MeshBasicMaterial({ map: textTexture, transparent: true });
+			const textGeometry = new THREE.PlaneGeometry(sliverLength * 0.9, cornerSize * 0.9);
+			const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+			textMesh.position.set(x, tileY + tileThickness / 2 + 0.5, z);
+			textMesh.rotation.x = -Math.PI / 2;
+			scene.add(textMesh);
+			scene.add(tile);
+		}
+
+		// Right side (spaces 31-39, top to bottom)
+		for (let i = 1; i <= numSlivers; i++) {
+			const spaceNumber = 30 + i;
+			const x = boardSize/2 - cornerSize/2;
+			const z = boardSize/2 - cornerSize - (i - 0.5) * sliverLength;
+			const coloredMaterial = tileMaterial.clone();
+			coloredMaterial.color.setHex(propertyColors[spaceNumber]);
+			const tile = createTile(cornerSize, sliverLength, tileThickness, coloredMaterial, { x, z, y: tileY }, spaceNumber, tileNames[spaceNumber]);
+			// Add text label
+			const textTexture = createTextTexture(tileNames[spaceNumber], 256, 256);
+			const textMaterial = new THREE.MeshBasicMaterial({ map: textTexture, transparent: true });
+			const textGeometry = new THREE.PlaneGeometry(cornerSize * 0.9, sliverLength * 0.9);
+			const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+			textMesh.position.set(x, tileY + tileThickness / 2 + 0.5, z);
+			textMesh.rotation.x = -Math.PI / 2;
+			scene.add(textMesh);
+			scene.add(tile);
+		}
+
+		// Center area (raised to same level as tiles) - single mesh to avoid glitching
+		const centerSize = 560;
+		const centerDepth = tileThickness;
+		const centerGeometry = new THREE.BoxGeometry(centerSize, centerDepth, centerSize);
+		const centerMesh = new THREE.Mesh(centerGeometry, centerMaterial);
+		centerMesh.position.set(0, tileY, 0);
+		centerMesh.receiveShadow = true;
+		centerMesh.castShadow = false;
+		// Add center square information
+		centerMesh.userData.tileId = 'center';
+		centerMesh.userData.tileName = 'Center Square';
+		centerMesh.userData.coordinates = {
+			x: 0,
+			y: tileY,
+			z: 0
+		};
+		// Center square has no text label (for future image placement)
+		tilesMap.set('center', centerMesh);
+		scene.add(centerMesh);
+
+		// Raycaster for click detection
+		const raycaster = new THREE.Raycaster();
+		const mouse = new THREE.Vector2();
+
+		// Click detection function
+		function onMouseClick(event) {
+			// Calculate mouse position in normalized device coordinates (-1 to +1)
+			mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+			mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+			// Update the raycaster with camera and mouse position
+			raycaster.setFromCamera(mouse, camera);
+
+			// Get all objects that intersect with the ray
+			// Collect all meshes from tiles
+			const objectsToCheck = [];
+			tilesMap.forEach((tile) => {
+				if (tile.isGroup) {
+					tile.traverse((child) => {
+						if (child.isMesh) {
+							objectsToCheck.push(child);
+						}
+					});
+				} else if (tile.isMesh) {
+					objectsToCheck.push(tile);
+				}
+			});
+
+			const intersects = raycaster.intersectObjects(objectsToCheck, true);
+
+			if (intersects.length > 0) {
+				// Get the first intersected object
+				const clickedObject = intersects[0].object;
+				
+				// Find the tile information (could be in the object itself or its parent)
+				let tileInfo = null;
+				if (clickedObject.userData.tileId !== undefined) {
+					tileInfo = clickedObject.userData;
+				} else {
+					// Check parent group
+					let parent = clickedObject.parent;
+					while (parent) {
+						if (parent.userData && parent.userData.tileId !== undefined) {
+							tileInfo = parent.userData;
+							break;
+						}
+						parent = parent.parent;
+					}
+				}
+
+				if (tileInfo) {
+					console.log('=== Tile Clicked ===');
+					console.log('Tile ID:', tileInfo.tileId);
+					console.log('Tile Name:', tileInfo.tileName);
+					console.log('3D Coordinates:', {
+						x: tileInfo.coordinates.x.toFixed(2),
+						y: tileInfo.coordinates.y.toFixed(2),
+						z: tileInfo.coordinates.z.toFixed(2)
+					});
+					console.log('===================');
+				}
+			}
+		}
+
+		// Add click event listener
+		window.addEventListener('click', onMouseClick);
+
+		// Dice setup
+		const dice = [];
+		const diceAngularVelocity = [];
+		let diceSpinTimer = 0;
+
+		// Clock for animation timing
+		const clock = new THREE.Clock();
+		
+		// Store animation mixers for animated models
+		const animationMixers = [];
+
+		// Animation loop
+		function animate() {
+			requestAnimationFrame(animate);
+			
+			const delta = clock.getDelta();
+			tokenAnimationTime += delta;
+			
+			// Update all animation mixers
+			animationMixers.forEach(mixer => {
+				mixer.update(delta);
+			});
+
+			// Update token animations (movement and hovering)
+			Object.keys(tokenPlayers).forEach(tokenName => {
+				const player = tokenPlayers[tokenName];
+				
+				// Debug: verify tokenType matches tokenName
+				if (player.tokenType !== tokenName) {
+					console.warn(`⚠️ Token type mismatch: ${tokenName} has tokenType "${player.tokenType}"`);
+				}
+				
+				if (player.isMoving) {
+					// Animate token moving to new square
+					const elapsed = performance.now() - player.moveStartTime;
+					const progress = Math.min(elapsed / player.moveDuration, 1);
+					
+					// Lerp X and Z positions
+					const currentX = player.startX + (player.targetX - player.startX) * progress;
+					const currentZ = player.startZ + (player.targetZ - player.startZ) * progress;
+					
+					// Different movement animations based on token type
+					if (player.tokenType === 'Helicopter') {
+						// Helicopter: flies with arc
+						const arc = Math.sin(progress * Math.PI) * 40; // 40 units peak height
+						const currentY = player.baseY + arc;
+						player.model.position.set(currentX, currentY, currentZ);
+						
+						// Rotate helicopter to face direction of movement
+						const dx = player.targetX - player.startX;
+						const dz = player.targetZ - player.startZ;
+						if (dx !== 0 || dz !== 0) {
+							const angle = Math.atan2(dx, dz) - Math.PI / 2;
+							player.model.rotation.y = angle;
+						}
+					} else if (player.tokenType === 'Cheeseburger') {
+						// Cheeseburger: hops along the tiles
+						const hopHeight = Math.sin(progress * Math.PI) * 30; // Peak hop height
+						const currentY = player.baseY + hopHeight;
+						player.model.position.set(currentX, currentY, currentZ);
+						
+						// Rotate to face direction of movement
+						const dx = player.targetX - player.startX;
+						const dz = player.targetZ - player.startZ;
+						if (dx !== 0 || dz !== 0) {
+							const angle = Math.atan2(dx, dz);
+							player.model.rotation.y = angle;
+						}
+					} else if (player.tokenType === 'Football') {
+						// Football: bounces and rolls along path
+						const bounceHeight = Math.sin(progress * Math.PI * 3) * 20; // Multiple bounces
+						const currentY = player.baseY + Math.max(0, bounceHeight);
+						player.model.position.set(currentX, currentY, currentZ);
+						player.model.rotation.x = progress * Math.PI * 6; // Set (not add) rolling motion
+						
+						const dx = player.targetX - player.startX;
+						const dz = player.targetZ - player.startZ;
+						if (dx !== 0 || dz !== 0) {
+							const angle = Math.atan2(dx, dz);
+							player.model.rotation.y = angle;
+						}
+					} else if (player.tokenType === 'Shoe') {
+						// Shoe: shuffles/walks along tiles with slight lift
+						const walkLift = Math.sin(progress * Math.PI * 2) * 15; // Walking bob
+						const currentY = player.baseY + Math.max(0, walkLift);
+						player.model.position.set(currentX, currentY, currentZ);
+						
+						// Rotate to face direction and add slight tilt
+						const dx = player.targetX - player.startX;
+						const dz = player.targetZ - player.startZ;
+						if (dx !== 0 || dz !== 0) {
+							const angle = Math.atan2(dx, dz);
+							player.model.rotation.y = angle;
+							player.model.rotation.z = Math.sin(progress * Math.PI * 2) * 0.2; // Tilting while walking
+						}
+					} else if (player.tokenType === 'TopHat') {
+						// TopHat: glides smoothly with slight spinning
+						player.model.position.set(currentX, player.baseY, currentZ);
+						player.model.rotation.z = progress * Math.PI * 2; // Spin during movement
+						
+						const dx = player.targetX - player.startX;
+						const dz = player.targetZ - player.startZ;
+						if (dx !== 0 || dz !== 0) {
+							const angle = Math.atan2(dx, dz);
+							player.model.rotation.y = angle;
+						}
+					} else if (player.tokenType === 'RollsRoyce') {
+						// RollsRoyce: drives smoothly while facing direction of movement
+						// Reset rotations to prevent carryover from previous animations
+						player.model.rotation.x = 0;
+						player.model.rotation.z = 0;
+						
+						const engineVibe = (Math.random() - 0.5) * 2; // Subtle vibration
+						const currentY = player.baseY + engineVibe;
+						player.model.position.set(currentX, currentY, currentZ);
+						
+						// Face direction of movement, stay upright
+						const dx = player.targetX - player.startX;
+						const dz = player.targetZ - player.startZ;
+						if (dx !== 0 || dz !== 0) {
+							const angle = Math.atan2(dx, dz);
+							player.model.rotation.y = angle;
+						}
+					} else if (player.tokenType === 'WhiteGirl') {
+						// WhiteGirl: walks to destination, swap models from idle to walk
+						
+						// Switch to walk model on first frame of movement
+						if (progress < 0.01 && !player.isWalking && player.walkModel) {
+							// Remove idle model from scene
+							scene.remove(player.idleModel);
+							// Add walk model to scene
+							scene.add(player.walkModel);
+							player.isWalking = true;
+							console.log('Switched to walk model');
+						}
+						
+						// Update position on the walking model
+						if (player.isWalking && player.walkModel) {
+							player.walkModel.position.set(currentX, player.baseY, currentZ);
+							// Face direction of movement
+							const dx = player.targetX - player.startX;
+							const dz = player.targetZ - player.startZ;
+							if (dx !== 0 || dz !== 0) {
+								const angle = Math.atan2(dx, dz);
+								player.walkModel.rotation.y = angle;
+							}
+						}
+					} else {
+						// Default: slide along the board
+						player.model.position.set(currentX, player.baseY, currentZ);
+						
+						const dx = player.targetX - player.startX;
+						const dz = player.targetZ - player.startZ;
+						if (dx !== 0 || dz !== 0) {
+							const angle = Math.atan2(dx, dz);
+							player.model.rotation.y = angle;
+						}
+					}
+					
+					// Animation complete - move to next waypoint or done
+					if (progress === 1) {
+						if (player.waypoints && player.currentWaypoint < player.waypoints.length - 1) {
+							// Move to next waypoint
+							player.currentWaypoint++;
+							const nextWaypoint = player.waypoints[player.currentWaypoint];
+							player.startX = currentX;
+							player.startZ = currentZ;
+							player.targetX = nextWaypoint.x + player.offsetX;
+							player.targetZ = nextWaypoint.z + player.offsetZ;
+							player.moveStartTime = performance.now();
+						} else {
+							// Movement sequence complete
+							player.isMoving = false;
+							player.hoverTime = 0;
+							showTileLandingUI(player.currentSpace, tokenName);
+						}
+					}
+				} else {
+					// Idle animations based on token type
+					if (player.tokenType === 'Helicopter') {
+						// Helicopter: hovering animation - subtle bobbing up and down
+						const hoverHeight = Math.sin(tokenAnimationTime * 2) * 5; // Bobs up/down 5 units
+						player.model.position.y = player.baseY + hoverHeight;
+					} else if (player.tokenType === 'Cheeseburger') {
+						// Cheeseburger: idle hopping in place
+						const idleHop = Math.sin(tokenAnimationTime * 3) * 8; // Small hop animation
+						player.model.position.y = player.baseY + Math.max(0, idleHop); // Only hop up, not down into ground
+					} else if (player.tokenType === 'Football') {
+						// Football: spinning in place
+						player.model.rotation.x = tokenAnimationTime * 0.5;
+						player.model.rotation.y = tokenAnimationTime * 0.7;
+						player.model.rotation.z = tokenAnimationTime * 0.3;
+						player.model.position.y = player.baseY;
+					} else if (player.tokenType === 'Shoe') {
+						// Shoe: tapping/bouncing in place
+						const tapBounce = Math.sin(tokenAnimationTime * 4) * 5;
+						player.model.position.y = player.baseY + Math.max(0, tapBounce);
+						player.model.rotation.z = Math.sin(tokenAnimationTime * 2) * 0.1; // Slight rocking
+					} else if (player.tokenType === 'TopHat') {
+						// TopHat: spinning and slight bobbing
+						player.model.rotation.z = tokenAnimationTime * 0.5;
+						const bobbing = Math.sin(tokenAnimationTime * 1.5) * 3;
+						player.model.position.y = player.baseY + bobbing;
+					} else if (player.tokenType === 'RollsRoyce') {
+						// RollsRoyce: engine idle vibration (subtle x-axis tilt)
+						player.model.position.y = player.baseY;
+						player.model.rotation.x = Math.sin(tokenAnimationTime * 4) * 0.02; // Subtle engine vibration
+					} else if (player.tokenType === 'WhiteGirl') {
+						// WhiteGirl: return to idle model when not moving
+						player.idleModel.position.y = player.baseY;
+						
+						if (player.isWalking && player.walkModel) {
+							// Switch back to idle model
+							scene.remove(player.walkModel);
+							scene.add(player.idleModel);
+							player.isWalking = false;
+							console.log('Switched back to idle model');
+						}
+					} else {
+						// Other tokens: stay on the board, no movement
+						player.model.position.y = player.baseY;
+					}
+				}
+			});
+
+			// Follow active player's token with camera ONLY during movement
+			if (gameStarted && isPlayerTurn) {
+				const currentPlayerToken = selectedPlayers[currentPlayerIndex];
+				if (currentPlayerToken && tokenPlayers[currentPlayerToken]) {
+					const activeToken = tokenPlayers[currentPlayerToken];
+					
+					if (activeToken.isMoving) {
+						// Token is moving - zoom in and follow it
+						const tokenPos = activeToken.model.position;
+						const cameraHeight = 120; // Zoom in height
+						const cameraDistance = 120; // Distance behind token
+						
+						// Calculate camera position to look at token from behind and above
+						const targetCameraX = tokenPos.x;
+						const targetCameraY = tokenPos.y + cameraHeight;
+						const targetCameraZ = tokenPos.z + cameraDistance;
+						
+						// Smoothly move camera to follow token
+						camera.position.x += (targetCameraX - camera.position.x) * 0.15;
+						camera.position.y += (targetCameraY - camera.position.y) * 0.15;
+						camera.position.z += (targetCameraZ - camera.position.z) * 0.15;
+						
+						// Look directly at the token
+						controls.target.x = tokenPos.x;
+						controls.target.y = tokenPos.y + 20; // Slightly above token
+						controls.target.z = tokenPos.z;
+						controls.update();
+					}
+					// When NOT moving, don't touch camera - let player move it freely with mouse
+				}
+			}
+
+			// Update physics and sync dice meshes
+			if (diceWorld) {
+				diceWorld.step(1 / 60);
+				diceObjects.forEach(({ mesh, body }) => {
+					mesh.position.copy(body.position);
+					mesh.quaternion.copy(body.quaternion);
+				});
+
+				// Check if dice have settled
+				if (needsResultCheck) {
+					let allStopped = true;
+					for (let obj of diceObjects) {
+						// Slightly higher threshold so we don't wait forever on tiny movements
+						if (
+							obj.body.velocity.lengthSquared() > 0.5 ||
+							obj.body.angularVelocity.lengthSquared() > 0.5
+						) {
+							allStopped = false;
+							break;
+						}
+					}
+					if (allStopped) {
+						calculateDiceResult();
+					}
+				}
+			}
+			
+			// Update camera zoom interpolation
+			if (zoomProgress < 1 && isZoomedIn) {
+				zoomProgress += delta / zoomDuration;
+				zoomProgress = Math.min(zoomProgress, 1);
+				
+				// Easing function for smooth interpolation
+				const t = zoomProgress < 0.5 
+					? 2 * zoomProgress * zoomProgress 
+					: -1 + (4 - 2 * zoomProgress) * zoomProgress;
+				
+				const nextX = cameraZoomStart.x + (cameraZoomTarget.x - cameraZoomStart.x) * t;
+				const nextY = cameraZoomStart.y + (cameraZoomTarget.y - cameraZoomStart.y) * t;
+				const nextZ = cameraZoomStart.z + (cameraZoomTarget.z - cameraZoomStart.z) * t;
+				
+				camera.position.set(nextX, nextY, nextZ);
+				
+				// Look at the center of the highlighted tile
+				const tilePos = getSpacePosition(currentInteractableSpace);
+				camera.lookAt(tilePos.x, 0, tilePos.z);
+			} else if (!isZoomedIn && zoomProgress > 0) {
+				// Zoom out animation
+				zoomProgress -= delta / zoomDuration;
+				zoomProgress = Math.max(zoomProgress, 0);
+				
+				const t = zoomProgress < 0.5 
+					? 2 * zoomProgress * zoomProgress 
+					: -1 + (4 - 2 * zoomProgress) * zoomProgress;
+				
+				const nextX = cameraZoomStart.x + (cameraZoomTarget.x - cameraZoomStart.x) * t;
+				const nextY = cameraZoomStart.y + (cameraZoomTarget.y - cameraZoomStart.y) * t;
+				const nextZ = cameraZoomStart.z + (cameraZoomTarget.z - cameraZoomStart.z) * t;
+				
+				camera.position.set(nextX, nextY, nextZ);
+				
+				if (zoomProgress === 0) {
+					camera.position.set(0, 200, 200);
+					controls.target.set(0, 0, 0);
+				}
+			}
+			
+			controls.update();
+			renderer.render(scene, camera);
+			labelRenderer.render(scene, camera);
+		}
+
+		// Handle resize
+		window.addEventListener('resize', () => {
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			labelRenderer.setSize(window.innerWidth, window.innerHeight);
+		});
+
+		// Export function to load models on spaces
+		window.loadModelOnSpace = async function(spaceNumber, modelPath, scale = 1) {
+			const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+			const loader = new GLTFLoader();
+			
+			loader.load(
+				modelPath,
+				(gltf) => {
+					const model = gltf.scene;
+					
+					// Enable shadows for all meshes in the model
+					model.traverse((child) => {
+						if (child.isMesh) {
+							child.castShadow = true;
+							child.receiveShadow = true;
+						}
+					});
+					
+					// Calculate position for space (flat on XZ plane)
+					let x = 0, z = 0, y = tileY + 20;
+				
+				if (spaceNumber === 0) {
+					x = boardSize/2 - cornerSize/2;
+					z = -(boardSize/2 - cornerSize/2);
+				} else if (spaceNumber === 10) {
+					x = boardSize/2 - cornerSize/2;
+					z = boardSize/2 - cornerSize/2;
+				} else if (spaceNumber === 20) {
+					x = -(boardSize/2 - cornerSize/2);
+					z = boardSize/2 - cornerSize/2;
+				} else if (spaceNumber === 30) {
+					x = -(boardSize/2 - cornerSize/2);
+					z = -(boardSize/2 - cornerSize/2);
+				} else if (spaceNumber >= 1 && spaceNumber <= 9) {
+					const index = spaceNumber - 1;
+					x = boardSize/2 - cornerSize - (index + 0.5) * sliverLength;
+					z = -(boardSize/2 - cornerSize/2);
+				} else if (spaceNumber >= 11 && spaceNumber <= 19) {
+					const index = spaceNumber - 11;
+					x = -(boardSize/2 - cornerSize/2);
+					z = -(boardSize/2 - cornerSize) + (index + 0.5) * sliverLength;
+				} else if (spaceNumber >= 21 && spaceNumber <= 29) {
+					const index = spaceNumber - 21;
+					x = -(boardSize/2 - cornerSize) + (index + 0.5) * sliverLength;
+					z = boardSize/2 - cornerSize/2;
+				} else if (spaceNumber >= 31 && spaceNumber <= 39) {
+					const index = spaceNumber - 31;
+					x = boardSize/2 - cornerSize/2;
+					z = boardSize/2 - cornerSize - (index + 0.5) * sliverLength;
+				}
+				
+					model.position.set(x, y, z);
+					model.scale.set(scale, scale, scale);
+					scene.add(model);
+					console.log(`Model loaded on space ${spaceNumber} at position (${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)})`);
+				},
+				(progress) => {
+					// Progress callback
+					console.log(`Loading model: ${(progress.loaded / progress.total * 100)}%`);
+				},
+				(error) => {
+					console.error('Error loading model:', error);
+				}
+			);
+		};
+
+		// Token model paths mapping
+		const tokenModels = {
+			'Cheeseburger': 'Models/Cheeseburger/cheeseburger.glb',
+			'Football': 'Models/Football/football.glb',
+			'Helicopter': 'Models/Helicopter/helicopter.glb',
+			'RollsRoyce': 'Models/RollsRoyce/rollsRoyceCarAnim.glb',
+			'Shoe': 'Models/Shoe/shoe.glb',
+			'TopHat': 'Models/TopHat/tophat.glb',
+			'WhiteGirl': 'Models/WhiteGirlIdle/WhiteGirlIdle.glb'
+		};
+		
+		// Additional model paths for animation variants
+		const tokenAnimationModels = {
+			'WhiteGirl': {
+				idle: 'Models/WhiteGirlIdle/WhiteGirlIdle.glb',
+				walk: 'Models/WhiteGirlWalk/WhiteGirlWalk.glb'
+			},
+			'TopHat': {
+				idle: 'Models/TopHat/tophat.glb',
+				walk: 'Models/TopHat/tophat.glb'
+			}
+		};
+
+		// Token scales for each model
+		// Token scales (tuned so each model fits comfortably on the 800x800 board)
+		const tokenScales = {
+			'Cheeseburger': 20,
+			'Football': 1,
+			'Helicopter': 0.1,
+			'RollsRoyce': 4,
+			'Shoe': 10,
+			'TopHat': 10,
+			// The WhiteGirl GLB is authored in meters and comes in very small; bump scale so she’s similar height to other tokens
+			'WhiteGirl': 0.4
+		};
+		
+		// Store loaded models for variants
+		const loadedTokenModels = {};
+
+		// Track spawned tokens for positioning
+		let tokenCount = 0;
+		const tokenSpacing = 40; // Space between tokens
+
+		// Function to spawn a token on GO square
+		async function spawnTokenOnGO(tokenName) {
+			const modelPath = tokenModels[tokenName];
+			const scale = tokenScales[tokenName] || 50;
+			
+			if (!modelPath) {
+				console.error(`Token model not found: ${tokenName}`);
+				return;
+			}
+
+			// Calculate offset position to avoid overlapping tokens
+			// Center the first token, then arrange others around it
+			let offsetX, offsetZ;
+			if (tokenCount === 0) {
+				// First token spawns at center
+				offsetX = 0;
+				offsetZ = 0;
+			} else {
+				// Subsequent tokens arranged in a grid pattern
+				const row = Math.floor((tokenCount - 1) / 3);
+				const col = (tokenCount - 1) % 3;
+				offsetX = (col - 1) * tokenSpacing; // -40, 0, 40 for centered arrangement
+				offsetZ = row * tokenSpacing; // 0, 40, 80...
+			}
+			
+			// Get GO square position
+			const goX = boardSize/2 - cornerSize/2;
+			const goZ = -(boardSize/2 - cornerSize/2);
+			const goY = tileY + 20;
+
+			// Load and position the token
+			const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+			const loader = new GLTFLoader();
+			
+			loader.load(
+				modelPath,
+				(gltf) => {
+					const model = gltf.scene.clone(); // Clone so we can spawn multiple
+					
+					// Enable shadows and fix textures for all meshes in the model
+					model.traverse((child) => {
+						if (child.isMesh) {
+							child.castShadow = true;
+							child.receiveShadow = true;
+							
+							// Fix texture loading - ensure materials are properly set
+							if (child.material) {
+								const materials = Array.isArray(child.material) ? child.material : [child.material];
+								materials.forEach(mat => {
+									// Update all texture maps
+									if (mat.map) {
+										mat.map.needsUpdate = true;
+										mat.needsUpdate = true;
+									}
+									if (mat.normalMap) {
+										mat.normalMap.needsUpdate = true;
+										mat.needsUpdate = true;
+									}
+									if (mat.roughnessMap) {
+										mat.roughnessMap.needsUpdate = true;
+										mat.needsUpdate = true;
+									}
+									if (mat.metalnessMap) {
+										mat.metalnessMap.needsUpdate = true;
+										mat.needsUpdate = true;
+									}
+									if (mat.aoMap) {
+										mat.aoMap.needsUpdate = true;
+										mat.needsUpdate = true;
+									}
+									if (mat.emissiveMap) {
+										mat.emissiveMap.needsUpdate = true;
+										mat.needsUpdate = true;
+									}
+									// Ensure material is using correct side
+									mat.side = THREE.DoubleSide;
+								});
+							}
+						}
+					});
+					
+					// Handle animations (for helicopter and other animated models)
+					let mixer = null;
+					if (gltf.animations && gltf.animations.length > 0) {
+						mixer = new THREE.AnimationMixer(model);
+						
+						// Store animation clips in model userData for later access
+						model.userData.animationClips = gltf.animations;
+						
+						// For WhiteGirl, start with idle animation
+						if (tokenName === 'WhiteGirl') {
+							const idleClip = gltf.animations.find(clip => clip.name.toLowerCase().includes('idle'));
+							if (idleClip) {
+								mixer.clipAction(idleClip).play();
+							} else if (gltf.animations.length > 0) {
+								// Fall back to first animation if no idle found
+								mixer.clipAction(gltf.animations[0]).play();
+							}
+						} else if (tokenName !== 'TopHat') {
+							// For other animated models (except TopHat), play all animations
+							gltf.animations.forEach((clip) => {
+								mixer.clipAction(clip).play();
+							});
+						}
+						// TopHat: don't play animations from GLB, use custom rotation instead
+						animationMixers.push(mixer);
+					}
+					
+					// Position with offset - different heights for different token types
+					let spawnY = goY;
+					let spawnRotation = 0;
+					
+					if (tokenName === 'Helicopter') {
+						spawnY = goY; // Fly high
+						spawnRotation = -Math.PI; // Face north
+					} else {
+						spawnY = tileY + 5; // Rest on tiles for cars, shoes, etc.
+						spawnRotation = -Math.PI / 2; // Face north for ground tokens
+					}
+					
+					model.position.set(goX + offsetX, spawnY, goZ + offsetZ);
+					model.rotation.y = spawnRotation;
+					model.scale.set(scale, scale, scale);
+					scene.add(model);
+					
+					// Track this token
+					const tokenPlayer = {
+						model: model,
+						tokenType: tokenName,
+						currentSpace: 0,
+						offsetX: offsetX,
+						offsetZ: offsetZ,
+						baseY: spawnY,
+						targetX: goX + offsetX,
+						targetZ: goZ + offsetZ,
+						isMoving: false,
+						moveStartTime: 0,
+						moveDuration: 0,
+						startX: 0,
+						startZ: 0,
+						hoverTime: 0,
+						mixer: mixer,
+						currentAnimationAction: null,
+						waypoints: [],
+						currentWaypoint: 0,
+						idleModel: model,
+						walkModel: null
+					};
+					tokenPlayers[tokenName] = tokenPlayer;
+					
+					tokenCount++;
+					console.log(`Spawned ${tokenName} on GO square - tokenType: "${tokenName}"`);
+					
+					// For WhiteGirl, pre-load the walk model (but don't add to scene yet)
+					if (tokenName === 'WhiteGirl' && tokenAnimationModels['WhiteGirl']) {
+						loader.load(
+							tokenAnimationModels['WhiteGirl'].walk,
+							(walkGltf) => {
+								const walkModel = walkGltf.scene.clone();
+								walkModel.traverse((child) => {
+									if (child.isMesh) {
+										child.castShadow = true;
+										child.receiveShadow = true;
+										if (child.material) {
+											const materials = Array.isArray(child.material) ? child.material : [child.material];
+											materials.forEach(mat => {
+												mat.side = THREE.DoubleSide;
+											});
+										}
+									}
+								});
+								// Position walk model at same location but DON'T add to scene yet
+								walkModel.position.set(goX + offsetX, spawnY, goZ + offsetZ);
+								walkModel.rotation.y = spawnRotation;
+								walkModel.scale.set(scale, scale, scale);
+								
+								// Store walk model in token player (not added to scene)
+								tokenPlayer.walkModel = walkModel;
+								console.log(`Loaded WhiteGirl walk model (not yet in scene)`);
+							},
+							undefined,
+							(error) => {
+								console.error(`Error loading WhiteGirl walk model:`, error);
+							}
+						);
+					}
+				},
+				(progress) => {
+					// Progress callback
+				},
+				(error) => {
+					console.error(`Error loading ${tokenName}:`, error);
+				}
+			);
+		}
+
+		// Highlight the tile the player landed on
+		function highlightTile(spaceNumber) {
+			// Remove previous highlight
+			if (currentInteractableSpace !== -1) {
+				const prevGroup = scene.getObjectByName(`tile_${currentInteractableSpace}`);
+				if (prevGroup && prevGroup.children) {
+					// Find mesh child with material
+					prevGroup.traverse((child) => {
+						if (child.isMesh && child.material) {
+							child.material.emissive.setHex(0x000000);
+							child.material.emissiveIntensity = 0;
+						}
+					});
+				}
+			}
+
+			// Highlight new tile
+			const tileGroup = scene.getObjectByName(`tile_${spaceNumber}`);
+			if (tileGroup && tileGroup.children) {
+				// Find mesh child with material
+				tileGroup.traverse((child) => {
+					if (child.isMesh && child.material) {
+						child.material.emissive.setHex(0x87CEEB); // Light blue
+						child.material.emissiveIntensity = 0.6;
+						child.material.opacity = 0.9;
+					}
+				});
+			}
+
+			currentInteractableSpace = spaceNumber;
+		}
+
+		// Zoom camera to tile
+		function zoomToTile(spaceNumber) {
+			const tilePos = getSpacePosition(spaceNumber);
+			
+			// Tile interaction panel removed - using tileLandingUI instead
+			// const panel = document.getElementById('tileInteractionPanel');
+			// const endTurnBtn = panel.querySelector('#endTurnBtn');
+			// if (endTurnBtn) {
+			// 	endTurnBtn.style.display = 'block';
+			// }
+			// panel.classList.add('active');
+			console.log(`✅ Tile ${spaceNumber} clicked`);
+		}
+
+		// Zoom camera back out
+		function zoomOutFromTile() {
+			cameraZoomStart = {
+				x: camera.position.x,
+				y: camera.position.y,
+				z: camera.position.z
+			};
+			
+			cameraZoomTarget = {
+				x: 0,
+				y: 200,
+				z: 200
+			};
+			
+			isZoomedIn = false;
+			zoomProgress = 0;
+
+			// Hide interaction panel
+			const panel = document.getElementById('tileInteractionPanel');
+			panel.classList.remove('active');
+		}
+
+		// Get position for any tile
+		function getSpacePosition(spaceNumber) {
+			spaceNumber = spaceNumber % 40; // Wrap around
+			let x = 0, z = 0;
+			
+			if (spaceNumber === 0) {
+				x = boardSize/2 - cornerSize/2;
+				z = -(boardSize/2 - cornerSize/2);
+			} else if (spaceNumber === 10) {
+				x = boardSize/2 - cornerSize/2;
+				z = boardSize/2 - cornerSize/2;
+			} else if (spaceNumber === 20) {
+				x = -(boardSize/2 - cornerSize/2);
+				z = boardSize/2 - cornerSize/2;
+			} else if (spaceNumber === 30) {
+				x = -(boardSize/2 - cornerSize/2);
+				z = -(boardSize/2 - cornerSize/2);
+			} else if (spaceNumber >= 1 && spaceNumber <= 9) {
+				const index = spaceNumber - 1;
+				x = boardSize/2 - cornerSize - (index + 0.5) * sliverLength;
+				z = -(boardSize/2 - cornerSize/2);
+			} else if (spaceNumber >= 11 && spaceNumber <= 19) {
+				const index = spaceNumber - 11;
+				x = -(boardSize/2 - cornerSize/2);
+				z = -(boardSize/2 - cornerSize) + (index + 0.5) * sliverLength;
+			} else if (spaceNumber >= 21 && spaceNumber <= 29) {
+				const index = spaceNumber - 21;
+				x = -(boardSize/2 - cornerSize) + (index + 0.5) * sliverLength;
+				z = boardSize/2 - cornerSize/2;
+			} else if (spaceNumber >= 31 && spaceNumber <= 39) {
+				const index = spaceNumber - 31;
+				x = boardSize/2 - cornerSize/2;
+				z = boardSize/2 - cornerSize - (index + 0.5) * sliverLength;
+			}
+			
+			return { x, z };
+		}
+
+		// Generate detailed waypoint path from current space to target space
+		// This includes intermediate positions for smooth path following
+		function generateMovementPath(startSpace, endSpace) {
+			const waypoints = [];
+			let current = startSpace;
+			
+			// Generate each intermediate space with sub-waypoints for smooth movement
+			while (current !== endSpace) {
+				current = (current + 1) % 40;
+				const pos = getSpacePosition(current);
+				// Add main waypoint at tile center
+				waypoints.push({ space: current, x: pos.x, z: pos.z, isTileCenter: true });
+			}
+			
+			return waypoints;
+		}
+
+		// Calculate smooth path waypoints that follow the board perimeter
+		function calculateSmoothPathWaypoints(startSpace, endSpace, stepsPerTile = 5) {
+			const waypoints = [];
+			let current = startSpace;
+			let iterationCount = 0;
+			
+			console.log(`DEBUG calculateSmoothPathWaypoints: start=${startSpace}, end=${endSpace}`);
+			
+			while (current !== endSpace) {
+				iterationCount++;
+				if (iterationCount > 40) {
+					console.error(`ERROR: Infinite loop in calculateSmoothPathWaypoints! start=${startSpace}, end=${endSpace}`);
+					break;
+				}
+				
+				const currentPos = getSpacePosition(current);
+				const nextSpace = (current + 1) % 40;
+				const nextPos = getSpacePosition(nextSpace);
+				
+				// Interpolate between current and next space with multiple waypoints
+				for (let i = 1; i <= stepsPerTile; i++) {
+					const t = i / stepsPerTile;
+					const x = currentPos.x + (nextPos.x - currentPos.x) * t;
+					const z = currentPos.z + (nextPos.z - currentPos.z) * t;
+					waypoints.push({
+						space: current + (i / stepsPerTile),
+						x: x,
+						z: z,
+						t: t,
+						fromSpace: current,
+						toSpace: nextSpace
+					});
+				}
+				
+				current = nextSpace;
+			}
+			
+			console.log(`DEBUG calculateSmoothPathWaypoints: generated ${waypoints.length} waypoints (${iterationCount} iterations)`);
+			return waypoints;
+		}
+
+		function moveTokenToSpace(tokenName, spaceNumber) {
+			if (!tokenPlayers[tokenName]) {
+				console.error(`Token ${tokenName} not found`);
+				return;
+			}
+
+			const player = tokenPlayers[tokenName];
+			const targetSpace = spaceNumber % 40;
+			const targetPos = getSpacePosition(targetSpace);
+			
+			console.log(`DEBUG moveTokenToSpace: ${tokenName}, from space ${player.currentSpace}, to space ${targetSpace} (input: ${spaceNumber})`);
+			
+			// Helicopter and RollsRoyce fly/drive directly; other tokens follow the board path smoothly
+			if (tokenName === 'Helicopter' || tokenName === 'RollsRoyce') {
+				// Direct path for helicopter / RollsRoyce
+				player.waypoints = [{ space: targetSpace, x: targetPos.x, z: targetPos.z }];
+				player.currentWaypoint = 0;
+				player.targetX = targetPos.x + player.offsetX;
+				player.targetZ = targetPos.z + player.offsetZ;
+				player.moveDuration = 1500; // Longer animation for direct flight
+			} else {
+				// Generate smooth path along board perimeter for other tokens
+				// 5 steps per tile = smoother movement
+				player.waypoints = calculateSmoothPathWaypoints(player.currentSpace, targetSpace, 5);
+				player.currentWaypoint = 0;
+				
+				if (player.waypoints.length > 0) {
+					const firstWaypoint = player.waypoints[0];
+					player.targetX = firstWaypoint.x + player.offsetX;
+					player.targetZ = firstWaypoint.z + player.offsetZ;
+					// 100ms per waypoint for smooth, continuous movement
+					player.moveDuration = 100;
+				} else {
+					// Same space - no movement needed
+					player.targetX = targetPos.x + player.offsetX;
+					player.targetZ = targetPos.z + player.offsetZ;
+					player.moveDuration = 500;
+				}
+			}
+			
+			player.startX = player.model.position.x;
+			player.startZ = player.model.position.z;
+			player.isMoving = true;
+			player.moveStartTime = performance.now();
+			player.currentSpace = targetSpace;
+			
+			console.log(`${tokenName} moving to space ${targetSpace}${player.waypoints.length > 0 ? ' via ' + player.waypoints.length + ' waypoints' : ' (direct flight)'}`);
+		}
+
+		// ========== VIDEO MODAL SYSTEM ==========
+		// TILE VIDEO MAPPING - Add your video URLs here by tile position (0-39)
+		// Can be a single string or array of strings for random selection
+		const tileVideos = {
+			0: "",  // GO
+			1: [  // Las Vegas Raiders
+				"Videos/LVRaidersVid.mp4",
+				"Videos/LVRaiders 2 (1).mp4",
+				"Videos/LVRaiders 3 (1).mp4",
+				"Videos/LVRaiders 4 (1).mp4",
+				"Videos/LVRaiders 5 (1).mp4"
+			],
+			2: "",  // Community Cards
+			3: [  // Las Vegas Grand Prix
+				"Videos/LV Grand Prix.mp4",
+				"Videos/LV Grand Prix End (1).mp4"
+			],
+			4: "",  // Income Tax
+			5: "Videos/Monorail (1).mp4",  // Las Vegas Monorail
+			6: "Videos/Offroading 1 (1).mp4",  // Speed Vegas Off Roading
+			7: "",  // Chance
+			8: [  // Las Vegas Golden Knights
+				"Videos/LV GKnights 1 (1).mp4",
+				"Videos/LV GKnights 2 (1).mp4",
+				"Videos/LV GKnights 3 (1).mp4",
+				"Videos/LV Golden Knights (1).mp4",
+				"Videos/LV Golden Knights (2).mp4"
+			],
+			9: [  // Maverick Helicopter Rides
+				"Videos/MavHeli 1.mp4 (1).mp4",
+				"Videos/MavHeli 2 (1).mp4",
+				"Videos/MavHeli 3 (1).mp4"
+			],
+			10: [  // JAIL
+				"Videos/Jailclip4.mp4",
+				"Videos/Jailclip5.mp4",
+				"Videos/jailclip6.mp4_1743296163946.mp4",
+				"Videos/Jailmoment2(cropped).mp4",
+				"Videos/jailmoment3(cropped).mp4",
+				"Videos/Imgoingtojail.mp4"
+			],
+			11: "Videos/BrothelVid (1).mp4", // Brothel
+			12: "",  // Electric Company
+			13: [  // Bet MGM
+				"Videos/MGMBoxing 1 (1).mp4",
+				"Videos/MGM 2.mp4",
+				"Videos/MGMBoxing 3 (1).mp4"
+			],
+			14: "Videos/Monorail (1).mp4",  // Las Vegas Monorail
+			15: "",  // Bellagio
+			16: [  // Las Vegas Aces
+				"Videos/WNBA (1).mp4",
+				"Videos/WNBAHL2 (1).mp4",
+				"Videos/WNBAHL3 (1).mp4",
+				"Videos/WNBAHL4 (1).mp4"
+			],
+			17: "",  // Community Cards
+			18: "Videos/horse6 (1).mp4",  // Horseback Riding
+			19: "",  // Resorts World Theatre
+			20: "",  // FREE PARKING
+			21: "",  // Chance
+			22: "",  // Hard Rock Hotel
+			23: "",  // Wynn Las Vegas
+			24: [  // Shriners Children's Open
+				"Videos/Shriners 1 (1).mp4",
+				"Videos/Shriners 3 (1).mp4",
+				"Videos/Shriners 4 (1).mp4"
+			],
+			25: "",  // Bachelor & Bachelorette Parties
+			26: "",  // Las Vegas Little White Wedding Chapel
+			27: "Videos/Sphere (1).mp4",  // Sphere
+			28: "",  // Community Cards
+			29: "",  // Water Works
+			30: "Videos/Imgoingtojail.mp4",  // GO TO JAIL
+			31: "",  // Caesars Palace
+			32: "",  // Santa Fe Hotel and Casino
+			33: "",  // Chance
+			34: "",  // Luxury Tax
+			35: "",  // House of Blues
+			36: "",  // The Cosmopolitan
+			37: "",  // Community Cards
+			38: "Videos/Monorail (1).mp4",  // Las Vegas Monorail
+			39: [  // Shriners Children's Open
+				"Videos/Shriners 1 (1).mp4",
+				"Videos/Shriners 3 (1).mp4",
+				"Videos/Shriners 4 (1).mp4"
+			]
+		};
+		window.tileVideos = tileVideos; // Expose to global scope
+
+		// ========== PROPERTY VIDEO MODAL FUNCTION ==========
+		window.showPropertyVideo = function(tileName, videoUrlOrArray) {
+			// Remove existing modal if present
+			const existingModal = document.getElementById('property-video-modal');
+			if (existingModal) {
+				existingModal.remove();
+			}
+
+			if (!tileName || !videoUrlOrArray) return;
+
+			// Handle both single string and array of strings
+			let videoUrl;
+			if (Array.isArray(videoUrlOrArray)) {
+				// Pick a random video from the array
+				videoUrl = videoUrlOrArray[Math.floor(Math.random() * videoUrlOrArray.length)];
+			} else {
+				videoUrl = videoUrlOrArray;
+			}
+
+			if (!videoUrl || videoUrl.trim() === '') return;
+
+			// Create modal container
+			const modal = document.createElement('div');
+			modal.id = 'property-video-modal';
+			modal.style.cssText = `
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(0, 0, 0, 0.7);
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				z-index: 10000;
+				font-family: Arial, sans-serif;
+			`;
+
+			// Create modal content
+			const modalContent = document.createElement('div');
+			modalContent.style.cssText = `
+				background: white;
+				border-radius: 15px;
+				padding: 30px;
+				max-width: 700px;
+				width: 90%;
+				box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+				animation: slideIn 0.3s ease-out;
+			`;
+
+			// Add CSS animation
+			if (!document.getElementById('property-video-modal-styles')) {
+				const style = document.createElement('style');
+				style.id = 'property-video-modal-styles';
+				style.textContent = `
+					@keyframes slideIn {
+						from {
+							transform: translateY(-50px);
+							opacity: 0;
+						}
+						to {
+							transform: translateY(0);
+							opacity: 1;
+						}
+					}
+				`;
+				document.head.appendChild(style);
+			}
+
+			// Title
+			const title = document.createElement('h2');
+			title.textContent = tileName || 'Property';
+			title.style.cssText = `
+				margin: 0 0 20px 0;
+				color: #333;
+				font-size: 28px;
+				text-align: center;
+				border-bottom: 2px solid #3498db;
+				padding-bottom: 10px;
+			`;
+			modalContent.appendChild(title);
+
+			// Video player
+			if (videoUrl && videoUrl.trim() !== '') {
+				const videoContainer = document.createElement('div');
+				videoContainer.style.cssText = `
+					position: relative;
+					width: 100%;
+					padding-bottom: 56.25%;
+					background: #000;
+					border-radius: 10px;
+					overflow: hidden;
+					margin-bottom: 20px;
+				`;
+
+				const video = document.createElement('video');
+				video.src = videoUrl;
+				video.controls = true;
+				video.autoplay = true;
+				video.style.cssText = `
+					position: absolute;
+					top: 0;
+					left: 0;
+					width: 100%;
+					height: 100%;
+				`;
+				videoContainer.appendChild(video);
+				modalContent.appendChild(videoContainer);
+			} else {
+				const noVideoMsg = document.createElement('p');
+				noVideoMsg.textContent = 'No video link available for this tile yet.';
+				noVideoMsg.style.cssText = `
+					text-align: center;
+					color: #999;
+					margin: 20px 0;
+					font-style: italic;
+				`;
+				modalContent.appendChild(noVideoMsg);
+			}
+
+			// Close button
+			const closeBtn = document.createElement('button');
+			closeBtn.textContent = 'Close';
+			closeBtn.style.cssText = `
+				width: 100%;
+				padding: 12px;
+				background: #007bff;
+				color: white;
+				border: none;
+				border-radius: 8px;
+				font-size: 16px;
+				cursor: pointer;
+				font-weight: bold;
+				transition: background 0.3s;
+			`;
+			closeBtn.onmouseover = () => closeBtn.style.background = '#0056b3';
+			closeBtn.onmouseout = () => closeBtn.style.background = '#007bff';
+			closeBtn.onclick = () => modal.remove();
+			modalContent.appendChild(closeBtn);
+
+			modal.appendChild(modalContent);
+			document.body.appendChild(modal);
+
+			// Close modal when clicking outside
+			modal.onclick = (e) => {
+				if (e.target === modal) {
+					modal.remove();
+				}
+			};
+
+			// Close on Escape key
+			const escapeHandler = (e) => {
+				if (e.key === 'Escape') {
+					modal.remove();
+					document.removeEventListener('keydown', escapeHandler);
+				}
+			};
+			document.addEventListener('keydown', escapeHandler);
+		};
+
+		// Game state for multiplayer
+		let selectedPlayers = []; // Array of selected token names
+		let gameStarted = false;
+		let currentPlayerIndex = 0;
+		let isPlayerTurn = false;
+		let myPlayerIndex = -1; // This client's player index (-1 means not assigned yet)
+
+		function handleServerMessage(data) {
+			switch(data.type) {
+				case 'gameState':
+					// Initial game state from server
+					selectedPlayers = data.gameState.selectedPlayers || [];
+					gameStarted = data.gameState.gameStarted || false;
+					currentPlayerIndex = data.gameState.currentPlayerIndex || 0;
+					myPlayerIndex = (data.yourPlayerIndex !== undefined) ? data.yourPlayerIndex : -1;
+					isPlayerTurn = (currentPlayerIndex === myPlayerIndex);
+					if (gameStarted) {
+						document.getElementById('tokenSelector').style.display = 'none';
+						document.getElementById('turnDisplay').style.display = 'block';
+						updateTurnDisplay();
+						selectedPlayers.forEach(tokenName => {
+							if (!tokenPlayers[tokenName]) {
+								spawnTokenOnGO(tokenName);
+							}
+						});
+					} else {
+						updatePlayersList();
+						updatePlayerButtonOpacity();
+						// Only show Start Game button if this is player 0 (first to connect)
+						document.getElementById('startGameBtn').style.display = 
+							(myPlayerIndex === 0 && selectedPlayers.length >= 2) ? 'block' : 'none';
+					}
+					break;
+
+				case 'playersUpdated':
+					selectedPlayers = data.selectedPlayers || [];
+					updatePlayersList();
+					updatePlayerButtonOpacity();
+					// Only show Start Game button if this is player 0
+					document.getElementById('startGameBtn').style.display = 
+						(myPlayerIndex === 0 && selectedPlayers.length >= 2) ? 'block' : 'none';
+					break;
+
+				case 'gameStarted':
+					gameStarted = true;
+					currentPlayerIndex = 0;
+					myPlayerIndex = (data.yourPlayerIndex !== undefined) ? data.yourPlayerIndex : 0;
+					isPlayerTurn = (currentPlayerIndex === myPlayerIndex);
+					console.log(`📍 I am player ${myPlayerIndex}, game started, isPlayerTurn=${isPlayerTurn}`);
+					
+					// Update selectedPlayers from server's gameState
+					if (data.gameState && data.gameState.selectedPlayers) {
+						selectedPlayers = data.gameState.selectedPlayers;
+					}
+					
+					document.getElementById('tokenSelector').style.display = 'none';
+					document.getElementById('turnDisplay').style.display = 'block';
+					updateTurnDisplay();
+					updateDiceButtonVisibility();
+					
+					// Spawn ALL selected player tokens on BOTH clients
+					selectedPlayers.forEach(tokenName => {
+						if (!tokenPlayers[tokenName]) {
+							console.log(`Spawning token: ${tokenName}`);
+							spawnTokenOnGO(tokenName);
+						}
+					});
+					break;
+
+				case 'diceRolled':
+				// Server is broadcasting the dice result to all players
+				// data.rollerIndex tells us which player rolled
+				console.log(`Dice rolled by player ${data.rollerIndex}, myPlayerIndex=${myPlayerIndex}`);
+				
+				if (myPlayerIndex !== data.rollerIndex) {
+					// This is a remote player rolling - re-animate the dice
+					console.log('Remote player rolled - animating dice');
+					// Ensure dice exist
+					createDiceMeshes();
+					// Wake and randomise dice with controlled velocities
+					diceObjects.forEach((obj) => {
+						obj.body.wakeUp();
+						obj.body.position.y = tileY + 100;
+						obj.body.position.x = (Math.random() - 0.5) * 120;
+						obj.body.position.z = (Math.random() - 0.5) * 120;
+						obj.body.velocity.set((Math.random() - 0.5) * 12, 0, (Math.random() - 0.5) * 12);
+						obj.body.angularVelocity.set((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
+					});
+					needsResultCheck = false;
+					playDiceAnimation(data.result, /*isRemote*/ true);
+				} else {
+					// This client rolled the dice - don't re-animate, just show result and move tokens
+					console.log('Local player rolled - skipping dice re-animation, showing result and moving tokens');
+					playDiceAnimation(data.result, /*isRemote*/ false);
+				}
+				break;
+
+			case 'tokenMoved':
+					// Another player's token moved - update position
+					if (tokenPlayers[data.tokenName]) {
+						const tokenObj = tokenPlayers[data.tokenName];
+						tokenObj.currentSpace = data.space;
+						tokenObj.targetX = data.x;
+						tokenObj.targetZ = data.z;
+						tokenObj.isMoving = true;
+						tokenObj.moveStartTime = performance.now();
+						tokenObj.moveDuration = 1000; // 1 second animation
+						tokenObj.startX = tokenObj.model.position.x;
+						tokenObj.startZ = tokenObj.model.position.z;
+						tokenObj.waypoints = []; // Clear waypoints - server already calculated final position
+						tokenObj.currentWaypoint = 0;
+						console.log(`Token ${data.tokenName} moving to space ${data.space}`);
+					}
+					break;
+
+				case 'turnChanged':
+					currentPlayerIndex = data.currentPlayerIndex;
+					isPlayerTurn = (currentPlayerIndex === myPlayerIndex);
+					console.log(`Turn changed to player ${currentPlayerIndex}, I am player ${myPlayerIndex}, isPlayerTurn=${isPlayerTurn}`);
+					updateTurnDisplay();
+					updateDiceButtonVisibility();
+					break;
+
+				case 'gameReset':
+					location.reload();
+					break;
+			}
+		}
+
+		function updatePlayerButtonOpacity() {
+			document.querySelectorAll('.token-btn').forEach(button => {
+				const tokenName = button.getAttribute('data-token');
+				button.style.opacity = selectedPlayers.includes(tokenName) ? '0.6' : '1';
+			});
+		}
+
+		function updateDiceButtonVisibility() {
+			const diceBtn = document.getElementById('diceButton');
+			if (gameStarted && isPlayerTurn) {
+				diceBtn.style.display = 'block';
+				diceBtn.disabled = false;
+			} else if (gameStarted) {
+				diceBtn.style.display = 'none'; // Hide when not your turn
+			} else {
+				diceBtn.style.display = 'block';
+				diceBtn.disabled = true;
+			}
+		}
+
+		// Add event listeners to token buttons
+		document.querySelectorAll('.token-btn').forEach(button => {
+			button.addEventListener('click', () => {
+				const tokenName = button.getAttribute('data-token');
+				
+				// Send selection to server - server will broadcast to all clients
+				sendToServer({
+					type: 'playerSelected',
+					token: tokenName
+				});
+			});
+		});
+
+		function updatePlayersList() {
+			const list = document.getElementById('playersList');
+			if (selectedPlayers.length === 0) {
+				list.textContent = 'No players selected';
+				list.style.color = '#999';
+			} else {
+				list.innerHTML = '<strong>Players:</strong> ' + selectedPlayers.map((p, i) => `${i + 1}. ${p}`).join(' | ');
+				list.style.color = '#333';
+			}
+		}
+
+		function startGame() {
+			if (selectedPlayers.length < 2) {
+				alert('Please select at least 2 players');
+				return;
+			}
+
+			// Send game start to server - server will broadcast to all clients
+			sendToServer({
+				type: 'startGame'
+			});
+		}
+
+		function updateTurnDisplay() {
+			const turnDisplay = document.getElementById('turnDisplay');
+			if (gameStarted) {
+				const currentPlayer = selectedPlayers[currentPlayerIndex];
+				turnDisplay.innerHTML = `<span style="color: #f39c12;">🎲 ${currentPlayer}'s Turn</span>`;
+			}
+		}
+
+		function nextPlayer() {
+			// Send next turn to server - server will broadcast to all clients
+			sendToServer({
+				type: 'nextTurn'
+			});
+		}
+
+		document.getElementById('startGameBtn').addEventListener('click', startGame);
+
+		// Tile interaction system
+		let currentInteractableSpace = -1; // Space number of tile player landed on
+		let isZoomedIn = false;
+		let cameraZoomTarget = null;
+		let cameraZoomStart = null;
+		let zoomProgress = 0;
+		const zoomDuration = 0.5; // seconds
+
+		// Create and place dice with physics (z-dice style)
+		let diceObjects = [];
+		let diceWorld = null;
+		let CANNON = null;
+		const diceBoxSize = 25;
+		const palette = ["#EAA14D", "#E05A47", "#4D9BEA", "#5FB376", "#D869A8", "#F2C94C", "#9B51E0", "#FFFFFF"];
+		let diceMeshesCreated = false;
+		
+		// Token tracking
+		let tokenPlayers = {}; // { tokenName: { model: THREE.Group, currentSpace: 0, targetX, targetZ, isMoving, baseY, hoverTime } }
+		let lastDiceResult = 0;
+		let tokenAnimationTime = 0;
+		
+		// Initialize physics world for dice
+		async function initDicePhysics() {
+			CANNON = await import('cannon-es');
+			diceWorld = new CANNON.World();
+			// Slightly stronger gravity so dice settle faster
+			diceWorld.gravity.set(0, -60, 0);
+			diceWorld.broadphase = new CANNON.NaiveBroadphase();
+			diceWorld.solver.iterations = 15;
+			diceWorld.allowSleep = true;
+
+			// Create physics walls for dice
+			const wallMat = new CANNON.Material();
+			const diceMat = new CANNON.Material();
+			diceWorld.addContactMaterial(
+				new CANNON.ContactMaterial(wallMat, diceMat, {
+					friction: 0.3,
+					restitution: 0.6
+				})
+			);
+
+			// Floor - positioned at top of tiles
+			const floorBody = new CANNON.Body({ mass: 0, material: wallMat });
+			floorBody.addShape(new CANNON.Plane());
+			floorBody.position.y = tileY + tileThickness / 2;
+			floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+			diceWorld.addBody(floorBody);
+
+			// Walls
+			const wallDistance = 200;
+			const createWall = (x, z, rot) => {
+				const body = new CANNON.Body({ mass: 0, material: wallMat });
+				body.addShape(new CANNON.Plane());
+				body.position.set(x, tileY + tileThickness / 2, z);
+				body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rot);
+				diceWorld.addBody(body);
+			};
+			createWall(wallDistance, 0, -Math.PI / 2);
+			createWall(-wallDistance, 0, Math.PI / 2);
+			createWall(0, -wallDistance, 0);
+			createWall(0, wallDistance, Math.PI);
+		}
+
+		// Create dice meshes and bodies - only called once on first roll
+		function createDiceMeshes() {
+			if (diceMeshesCreated) return;
+			diceMeshesCreated = true;
+
+			const geometry = new THREE.BoxGeometry(diceBoxSize, diceBoxSize, diceBoxSize);
+			const shape = new CANNON.Box(new CANNON.Vec3(diceBoxSize / 2, diceBoxSize / 2, diceBoxSize / 2));
+			
+			for (let i = 0; i < 2; i++) {
+				const whiteColor = "#FFFFFF"; // Always white dice
+				const diceMaterials = [];
+				for (let j = 1; j <= 6; j++) {
+					diceMaterials.push(new THREE.MeshBasicMaterial({ map: createVectorDiceTexture(j, whiteColor) }));
+				}
+				
+				// Adjust material order to match Cube UV
+				const matArray = [
+					diceMaterials[0], diceMaterials[5], diceMaterials[1], 
+					diceMaterials[4], diceMaterials[2], diceMaterials[3]
+				];
+
+				const mesh = new THREE.Mesh(geometry, matArray);
+				mesh.position.set((i === 0 ? 40 : -40), tileY + 100, 40);
+				mesh.castShadow = true;
+				mesh.receiveShadow = true;
+				mesh.material.forEach(m => m.transparent = true);
+				scene.add(mesh);
+
+				const startX = (i === 0 ? 40 : -40);
+				const body = new CANNON.Body({
+					mass: 5,
+					shape: shape,
+					position: new CANNON.Vec3(startX, tileY + 100, 40),
+					sleepSpeedLimit: 0.5
+				});
+				// Add damping so dice slow down and don't roll forever
+				body.linearDamping = 0.35;
+				body.angularDamping = 0.35;
+				body.quaternion.setFromEuler(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+				diceWorld.addBody(body);
+
+				diceObjects.push({ mesh: mesh, body: body });
+			}
+		}
+
+		// Initialize physics and start animation
+		initDicePhysics().then(() => {
+			console.log('Dice physics initialized');
+			initCarousel(); // Initialize carousel on the board
+			animate();
+		});
+
+		// Dice roll handler with physics
+		let needsResultCheck = false;
+		let resultAlreadyDisplayed = false;
+		
+		function calculateDiceResult() {
+			if (!diceObjects.length || !needsResultCheck) return;
+			
+			// Prevent calculating result twice
+			if (resultAlreadyDisplayed) return;
+			resultAlreadyDisplayed = true;
+
+			let result = 0;
+			diceObjects.forEach((obj) => {
+				obj.body.sleep();
+				
+				// Define dice faces and their values
+				const faceNormals = [
+					new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0),
+					new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0),
+					new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1)
+				];
+				const faceValues = [1, 6, 2, 5, 3, 4];
+
+				let maxDot = -Infinity;
+				let faceValue = 1;
+
+				// Find the face pointing upward (max Y component)
+				faceNormals.forEach((normal, index) => {
+					const worldNormal = normal.clone().applyQuaternion(obj.body.quaternion);
+					if (worldNormal.y > maxDot) {
+						maxDot = worldNormal.y;
+						faceValue = faceValues[index];
+					}
+				});
+
+				result += faceValue;
+			});
+
+			lastDiceResult = result;
+
+			// Broadcast dice roll to all players (including ourselves)
+			sendToServer({
+				type: 'diceRolled',
+				result: result
+			});
+
+			// Don't call playDiceAnimation here - let the server broadcast trigger it for all players
+			needsResultCheck = false;
+		}
+
+		// Shared visual flow for dice animation + result/cleanup
+		function playDiceAnimation(result, isRemote) {
+			const resultDiv = document.getElementById("diceResult");
+			if (!resultDiv) return;
+
+			console.log(`playDiceAnimation called: result=${result}, isRemote=${isRemote}, gameStarted=${gameStarted}, currentPlayerIndex=${currentPlayerIndex}`);
+
+			const resultValue = document.getElementById("diceResultValue");
+			if (resultValue) {
+				resultValue.textContent = result;
+			}
+			resultDiv.style.opacity = 1;
+			resultDiv.style.display = "block";
+
+			// Move tokens forward by dice result after 1 second (let player see the result first)
+			setTimeout(() => {
+				// Only the local thrower should actually move tokens / send tokenMoved
+				if (!isRemote) {
+					console.log(`Moving tokens for local player. gameStarted=${gameStarted}, currentPlayerToken=${selectedPlayers[currentPlayerIndex]}`);
+					if (gameStarted) {
+						// In multiplayer: only move current player's token
+						const currentPlayerToken = selectedPlayers[currentPlayerIndex];
+						const newSpace = (tokenPlayers[currentPlayerToken].currentSpace + result) % 40;
+						console.log(`MOVING TOKEN: ${currentPlayerToken} to space ${newSpace}`);
+						moveTokenToSpace(currentPlayerToken, newSpace);
+						
+						// Broadcast token movement to all players
+						const pos = getSpacePosition(newSpace);
+						sendToServer({
+							type: 'tokenMoved',
+							tokenName: currentPlayerToken,
+							space: newSpace,
+							x: pos.x,
+							y: pos.y,
+							z: pos.z
+						});
+						
+						// Update interactable tile and show panel after token arrives
+						currentInteractableSpace = newSpace;
+						highlightTile(newSpace);
+						
+						// Show interaction panel after token movement animation
+						setTimeout(() => {
+							zoomToTile(newSpace);
+						}, 1500); // Wait for token animation to complete
+					} else {
+						// In single player: move all tokens
+						Object.keys(tokenPlayers).forEach(tokenName => {
+							const newSpace = (tokenPlayers[tokenName].currentSpace + result) % 40;
+							moveTokenToSpace(tokenName, newSpace);
+						});
+					}
+				}
+			}, 1000);
+
+			// Fade out and clean up dice after 5 seconds
+			setTimeout(() => {
+				// Fade out text
+				let opacity = 1;
+				const fadeInterval = setInterval(() => {
+					opacity -= 0.05;
+					resultDiv.style.opacity = opacity;
+					if (opacity <= 0) {
+						clearInterval(fadeInterval);
+						resultDiv.style.display = "none";
+					}
+				}, 50);
+
+				// Remove dice from scene and physics world - SAFELY
+				diceObjects.forEach((obj) => {
+					// Remove from scene
+					if (obj.mesh.parent) {
+						scene.remove(obj.mesh);
+					}
+					// Remove from physics world
+					if (obj.body && diceWorld.bodies.includes(obj.body)) {
+						diceWorld.removeBody(obj.body);
+					}
+				});
+				
+				// COMPLETELY clear the array
+				diceObjects.length = 0;
+				diceMeshesCreated = false; // Reset so new dice can be created
+				console.log('✅ Dice cleaned up, diceObjects.length =', diceObjects.length);
+				
+				// Do NOT auto-advance turn - wait for player to click End Turn button
+			}, 5000);
+		}
+
+		function rollDice() {
+			// Prevent rolling if dice are still in play
+			if (diceObjects.length > 0) {
+				console.warn('⚠️ Dice still rolling, please wait');
+				return;
+			}
+
+			// Only allow current player to roll in multiplayer
+			if (gameStarted && !isPlayerTurn) {
+				alert('Wait for your turn!');
+				return;
+			}
+
+			isPlayerTurn = false; // Player has rolled
+			resultAlreadyDisplayed = false; // Reset for new roll
+			
+			// Create fresh dice on roll if not yet created
+			createDiceMeshes();
+			
+			// Wake and randomise dice with controlled velocities (less chaotic)
+			needsResultCheck = false;
+			diceObjects.forEach((obj) => {
+				obj.body.wakeUp();
+				obj.body.position.y = tileY + 100;
+				obj.body.position.x = (Math.random() - 0.5) * 120;
+				obj.body.position.z = (Math.random() - 0.5) * 120;
+				obj.body.velocity.set((Math.random() - 0.5) * 12, 0, (Math.random() - 0.5) * 12);
+				obj.body.angularVelocity.set((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
+			});
+			setTimeout(() => { needsResultCheck = true; }, 2000);
+		}
+
+		document.getElementById('diceButton').addEventListener('click', () => {
+			rollDice();
+		});
+
+		// Dev Mode - Test Minigames
+		const devModePanel = document.getElementById('devModePanel');
+		const toggleDevModeBtn = document.getElementById('toggleDevMode');
+		
+		toggleDevModeBtn.addEventListener('click', () => {
+			const isVisible = devModePanel.style.display === 'block';
+			devModePanel.style.display = isVisible ? 'none' : 'block';
+			toggleDevModeBtn.textContent = isVisible ? 'Dev Mode' : 'Dev Mode ✓';
+		});
+
+		// Function to teleport current player to a tile and show landing UI
+		function testMiniGameLanding(tileNumber) {
+			if (!gameStarted || !isPlayerTurn) {
+				alert('Must be your turn and game must be started!');
+				return;
+			}
+
+			const currentPlayerToken = selectedPlayers[currentPlayerIndex];
+			if (!currentPlayerToken || !tokenPlayers[currentPlayerToken]) {
+				alert('Token not found!');
+				return;
+			}
+
+			const player = tokenPlayers[currentPlayerToken];
+			
+			// Update token's current space
+			player.currentSpace = tileNumber;
+			
+			// Get the position for this tile
+			const tilePos = getSpacePosition(tileNumber);
+			player.model.position.set(tilePos.x, player.baseY, tilePos.z);
+			
+			console.log(`🎮 DEV: Teleported ${currentPlayerToken} to tile ${tileNumber}`);
+			
+			// Show the landing UI
+			showTileLandingUI(tileNumber, currentPlayerToken);
+		}
+
+		// Dev mode button listeners
+		document.getElementById('testSlotMachine').addEventListener('click', () => testMiniGameLanding(11));
+		document.getElementById('testPoker').addEventListener('click', () => testMiniGameLanding(13));
+		document.getElementById('testRoulette').addEventListener('click', () => testMiniGameLanding(23));
+		document.getElementById('testBlackjack').addEventListener('click', () => testMiniGameLanding(31));
+		document.getElementById('testBaccarat').addEventListener('click', () => testMiniGameLanding(32));
+		document.getElementById('testCraps').addEventListener('click', () => testMiniGameLanding(36));
+
+		// End Turn button handler
+		document.getElementById('endTurnBtn').addEventListener('click', () => {
+			if (currentInteractableSpace !== -1) {
+				isZoomedIn = false;
+				zoomOutFromTile();
+				setTimeout(() => {
+					nextPlayer();
+				}, 300); // Wait for zoom animation to complete
+			}
+		});
+
+		// End Turn button handler for tile landing UI
+		document.getElementById('endTurnBtnLanding').addEventListener('click', () => {
+			// Hide the landing UI
+			document.getElementById('tileLandingUI').classList.remove('active');
+			// Hide minigame modal if visible
+			document.getElementById('minigameModal').style.display = 'none';
+			// Advance to next player
+			nextPlayer();
+		});
+
+		// Close minigame modal button
+		document.getElementById('closeMinigame').addEventListener('click', () => {
+			document.getElementById('minigameModal').style.display = 'none';
+			document.getElementById('tileLandingUI').classList.remove('active');
+			nextPlayer();
+		});
+
+		console.log('3D Board initialized with Three.js!');
+		console.log('Use loadModelOnSpace(spaceNumber, modelPath, scale) to place models');
+	</script>
 </body>
 </html>

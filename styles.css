@@ -1,3 +1,9 @@
+/* Highlighted tile (2D DOM) */
+.space.highlighted {
+    border: 4px solid #3498db !important;
+    box-shadow: 0 0 16px #3498db88;
+    z-index: 10;
+}
 /* Cosmetic base for corners (not interactive, not hoverable) */
 .corner-cosmetic {
     pointer-events: none;
@@ -49,6 +55,8 @@ body {
     /* Remove static transform, let JS control it */
     transition: transform 0.3s ease;
     z-index: 100;
+    /* Add subtle shadow to enhance 3D effect */
+    filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.4));
 }
 
 .center-area {
@@ -58,8 +66,8 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) translateZ(-50px);
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-    border: 8px solid #1a252f;
+    background: rgba(44, 62, 80, 0.3);
+    border: 8px solid rgba(26, 37, 47, 0.5);
     border-radius: 20px;
     box-shadow: 
         0 0 50px rgba(0, 0, 0, 0.5),
@@ -68,6 +76,23 @@ body {
     justify-content: center;
     align-items: center;
     z-index: 1;
+    transform-style: preserve-3d;
+    backdrop-filter: blur(2px);
+}
+
+/* Add 3D depth to center area with sides */
+.center-area::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background: rgba(26, 37, 47, 0.2);
+    border-radius: 20px;
+    transform: translateZ(-15px);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+    z-index: -1;
 }
 
 .center-content {
@@ -90,6 +115,41 @@ body {
     z-index: 2;
     transform-style: preserve-3d;
     background: rgba(0, 0, 0, 0.1);
+    /* Make board surface look like wood/board material */
+    background-image: 
+        repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px),
+        repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+}
+
+/* 3D Board Sides */
+.board-side {
+    transform-style: preserve-3d;
+    box-shadow: 
+        inset 0 0 10px rgba(0, 0, 0, 0.5),
+        0 5px 15px rgba(0, 0, 0, 0.3);
+    /* Add wood grain texture effect */
+    background-image: 
+        repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 3px,
+            rgba(0, 0, 0, 0.1) 3px,
+            rgba(0, 0, 0, 0.1) 4px
+        );
+}
+
+.board-bottom {
+    transform-style: preserve-3d;
+    border: 2px solid #0a0f14;
+    /* Add subtle texture to bottom */
+    background-image: 
+        repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 10px,
+            rgba(0, 0, 0, 0.05) 10px,
+            rgba(0, 0, 0, 0.05) 11px
+        );
 }
 
 /* Base space styling */
@@ -107,11 +167,17 @@ body {
         0 12px 32px 0 rgba(0,0,0,0.35), /* strong shadow under tile */
         0 5px 15px rgba(0, 0, 0, 0.3),
         inset 0 1px 0 rgba(255, 255, 255, 0.5);
-    .corner-cosmetic {
-        /* Add shadow under cosmetic base as well */
-        box-shadow: 0 12px 32px 0 rgba(0,0,0,0.35);
-    }
     margin: 1px;
+    /* Add 3D tile edge effect */
+    border-top: 3px solid rgba(255, 255, 255, 0.6);
+    border-left: 3px solid rgba(255, 255, 255, 0.6);
+    border-right: 2px solid rgba(0, 0, 0, 0.3);
+    border-bottom: 2px solid rgba(0, 0, 0, 0.3);
+}
+
+.corner-cosmetic {
+    /* Add shadow under cosmetic base as well */
+    box-shadow: 0 12px 32px 0 rgba(0,0,0,0.35);
 }
 
 /* Removed the 3D lip effect */
@@ -211,13 +277,13 @@ body {
 .space-go-jail {
     background: #b0b0b0;
     /* plain grey */
-    transform: translateZ(5px);
+    transform: translateZ(20px);
 }
 
 /* Top row spaces (right to left, from GO corner) */
 .space-top {
     bottom: 0;
-    transform: translateZ(5px);
+    transform: translateZ(20px);
 }
 
 .space-top[data-space="1"] { right: 102px; }
@@ -233,7 +299,7 @@ body {
 /* Right side spaces (top to bottom, from Jail corner) */
 .space-right {
     bottom: 0;
-    transform: rotateZ(90deg) translateZ(5px);
+    transform: rotateZ(90deg) translateZ(20px);
     transform-origin: center center;
 }
 
@@ -250,7 +316,7 @@ body {
 /* Bottom row spaces (left to right, from Free Parking) */
 .space-bottom {
     top: 0;
-    transform: rotateZ(180deg) translateZ(5px);
+    transform: rotateZ(180deg) translateZ(20px);
     transform-origin: center center;
 }
 
@@ -267,7 +333,7 @@ body {
 /* Left side spaces (bottom to top, from Go to Jail) */
 .space-left {
     top: 0;
-    transform: rotateZ(-90deg) translateZ(5px);
+    transform: rotateZ(-90deg) translateZ(20px);
     transform-origin: center center;
 }
 
@@ -490,6 +556,24 @@ body {
     margin-top: 10px;
     padding-top: 10px;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Three.js Container for board models */
+#three-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 50;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+#three-container canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 /* Three.js Token Container */

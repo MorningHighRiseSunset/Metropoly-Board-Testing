@@ -1,7 +1,3 @@
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/"
-        }
-    }
+"Penthouse Timeshare"
+- Apply to appropriate tiles.
+Own Timeshare or rent it out.
