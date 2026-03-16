@@ -4,20 +4,81 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 
+
+const os = require('os');
 const PORT = 8000;
 
-// Game state shared across all players
-let gameState = {
-  selectedPlayers: [],
-  gameStarted: false,
-  currentPlayerIndex: 0,
-  tokenPositions: {},
-  diceResult: null,
-  players: []
-};
+function getLocalExternalIPv4() {
+  const interfaces = os.networkInterfaces();
+  let preferredIP = null;
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal && iface.address.startsWith('192.168.')) {
+        // Prefer non-VirtualBox host-only IPs (not 192.168.56.x)
+        if (!iface.address.startsWith('192.168.56.')) {
+          return iface.address;
+        }
+        preferredIP = iface.address; // fallback to host-only if no other
+      }
+    }
+  }
+  return preferredIP;
+}
 
-// Track which client is which player for turn validation
-let clientToPlayerMap = new Map(); // ws -> playerIndex
+// Lobby system - multiple lobbies with max 4 players each
+let lobbies = new Map(); // lobbyId -> { players: [], gameState: {...} }
+let clientToLobby = new Map(); // ws -> lobbyId
+let clientToPlayerName = new Map(); // ws -> playerName
+let nextLobbyId = 1;
+
+// Build a lightweight summary of all lobbies for lobby UI
+function getLobbySummary() {
+  const summary = [];
+  for (const [lobbyId, lobby] of lobbies.entries()) {
+    summary.push({
+      lobbyId,
+      playerCount: lobby.players.length,
+      maxPlayers: lobby.maxPlayers,
+      players: lobby.players.map((p, index) => ({
+        name: p.name,
+        index,
+        isHost: index === 0
+      })),
+      gameStarted: !!lobby.gameState?.gameStarted
+    });
+  }
+  return summary;
+}
+
+// Helper function to create a new lobby
+function createLobby() {
+  const lobbyId = `lobby_${nextLobbyId++}`;
+  lobbies.set(lobbyId, {
+    players: [],
+    maxPlayers: 4,
+    gameState: {
+      selectedPlayers: [],
+      gameStarted: false,
+      currentPlayerIndex: 0,
+      tokenPositions: {},
+      diceResult: null,
+      players: [],
+      playerMoney: {},
+      propertyOwners: {}
+    }
+  });
+  return lobbyId;
+}
+
+// Helper function to find or create a lobby for a new player
+function findAvailableLobby() {
+  for (const [lobbyId, lobby] of lobbies.entries()) {
+    if (lobby.players.length < lobby.maxPlayers && !lobby.gameState.gameStarted) {
+      return lobbyId;
+    }
+  }
+  return createLobby(); // Create new lobby if none available
+}
 
 const server = http.createServer((req, res) => {
   const pathname = decodeURIComponent(url.parse(req.url).pathname);
@@ -75,19 +136,20 @@ console.log('🚀 WebSocket server created, waiting for HTTP server to start...'
 
 wss.on('connection', (ws, req) => {
   const clientIp = req.socket.remoteAddress;
-  const playerIndex = wss.clients.size - 1; // 0-indexed based on connection order
-  clientToPlayerMap.set(ws, playerIndex);
-  console.log(`✅ Player ${playerIndex + 1} connected from ${clientIp}. Total players: ${wss.clients.size}`);
+  console.log(`✅ New connection from ${clientIp}. Total connections: ${wss.clients.size}`);
   
-  // Send current game state and this client's player index to new player
+  // Send initial message asking for player name
   try {
     ws.send(JSON.stringify({
-      type: 'gameState',
-      gameState: gameState,
-      yourPlayerIndex: playerIndex
+      type: 'requestPlayerName'
+    }));
+    // Also send current lobby summary so new tabs immediately see existing hosts
+    ws.send(JSON.stringify({
+      type: 'lobbySummary',
+      lobbies: getLobbySummary()
     }));
   } catch (err) {
-    console.error('Error sending initial state:', err.message);
+    console.error('Error requesting player name:', err.message);
   }
 
   ws.on('message', (message) => {
@@ -96,68 +158,214 @@ wss.on('connection', (ws, req) => {
       console.log(`📨 Message from ${clientIp}:`, data.type);
       
       switch(data.type) {
-        case 'playerSelected':
-          // Player selected a token
-          const playerIndex = gameState.selectedPlayers.indexOf(data.token);
-          if (playerIndex > -1) {
-            gameState.selectedPlayers.splice(playerIndex, 1);
-          } else {
-            gameState.selectedPlayers.push(data.token);
+        case 'joinLobby':
+          // Player wants to join a lobby with their name
+          const playerName = data.playerName?.trim();
+          if (!playerName) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: 'Player name is required'
+            }));
+            return;
           }
-          broadcast({
+
+          // Check if name is already taken in any lobby
+          let nameTaken = false;
+          for (const [lobbyId, lobby] of lobbies.entries()) {
+            if (lobby.players.some(p => p.name === playerName)) {
+              nameTaken = true;
+              break;
+            }
+          }
+
+          if (nameTaken) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: 'This name is already taken. Please choose another.'
+            }));
+            return;
+          }
+
+          // Find or create an available lobby
+          const lobbyId = findAvailableLobby();
+          const lobby = lobbies.get(lobbyId);
+          
+          // Add player to lobby
+          const playerData = {
+            name: playerName,
+            ws: ws,
+            playerIndex: lobby.players.length
+          };
+          lobby.players.push(playerData);
+          
+          // Update mappings
+          clientToLobby.set(ws, lobbyId);
+          clientToPlayerName.set(ws, playerName);
+          
+          console.log(`👤 ${playerName} joined ${lobbyId}. Players in lobby: ${lobby.players.length}/4`);
+          
+          // Send lobby info to player
+          ws.send(JSON.stringify({
+            type: 'lobbyJoined',
+            lobbyId: lobbyId,
+            playerName: playerName,
+            playerIndex: playerData.playerIndex,
+            players: lobby.players.map(p => ({ name: p.name, index: p.playerIndex })),
+            maxPlayers: lobby.maxPlayers
+          }));
+          
+          // Notify all players in lobby about the update
+          broadcastToLobby(lobbyId, {
             type: 'playersUpdated',
-            selectedPlayers: gameState.selectedPlayers
+            players: lobby.players.map(p => ({ name: p.name, index: p.playerIndex })),
+            playerCount: lobby.players.length
+          });
+          // And broadcast global lobby summary so every tab sees the current host list
+          broadcast({
+            type: 'lobbySummary',
+            lobbies: getLobbySummary()
+          });
+          
+          break;
+
+        case 'playerSelected':
+          const playerLobbyId = clientToLobby.get(ws);
+          if (!playerLobbyId) return;
+          
+          const playerLobby = lobbies.get(playerLobbyId);
+          const playerGameState = playerLobby.gameState;
+          
+          // Player selected a token
+          const tokenPlayerIndex = playerGameState.selectedPlayers.indexOf(data.token);
+          if (tokenPlayerIndex > -1) {
+            playerGameState.selectedPlayers.splice(tokenPlayerIndex, 1);
+          } else {
+            playerGameState.selectedPlayers.push(data.token);
+          }
+          broadcastToLobby(playerLobbyId, {
+            type: 'playersUpdated',
+            selectedPlayers: playerGameState.selectedPlayers
           });
           break;
 
         case 'startGame':
-          gameState.gameStarted = true;
-          gameState.currentPlayerIndex = 0;
-          gameState.players = gameState.selectedPlayers.map(token => ({
+          const startLobbyId = clientToLobby.get(ws);
+          if (!startLobbyId) return;
+          
+          const startLobby = lobbies.get(startLobbyId);
+          const startGameState = startLobby.gameState;
+          
+          startGameState.gameStarted = true;
+          startGameState.currentPlayerIndex = 0;
+          startGameState.players = startGameState.selectedPlayers.map(token => ({
             token,
-            currentSpace: 0
+            currentSpace: 0,
+            name: token
           }));
-          // Broadcast to all clients with each one's player index from clientToPlayerMap
-          wss.clients.forEach((client) => {
-            if (client.readyState === WebSocket.OPEN) {
-              const playerIdx = clientToPlayerMap.get(client);
-              client.send(JSON.stringify({
+          
+          // Initialize playerMoney for each player
+          startGameState.playerMoney = {};
+          startGameState.selectedPlayers.forEach(name => {
+            startGameState.playerMoney[name] = 1500;
+          });
+          
+          // Broadcast to all clients in lobby with their player index
+          startLobby.players.forEach((playerData) => {
+            if (playerData.ws.readyState === WebSocket.OPEN) {
+              playerData.ws.send(JSON.stringify({
                 type: 'gameStarted',
-                gameState: gameState,
-                yourPlayerIndex: playerIdx
+                gameState: startGameState,
+                yourPlayerIndex: playerData.playerIndex
               }));
             }
           });
           break;
+        case 'moneyUpdated':
+          const moneyLobbyId = clientToLobby.get(ws);
+          if (!moneyLobbyId) return;
+          
+          const moneyLobby = lobbies.get(moneyLobbyId);
+          // { playerName, newBalance }
+          if (data.playerName && typeof data.newBalance === 'number') {
+            moneyLobby.gameState.playerMoney[data.playerName] = data.newBalance;
+            broadcastToLobby(moneyLobbyId, {
+              type: 'moneyUpdated',
+              playerName: data.playerName,
+              newBalance: data.newBalance,
+              allMoney: moneyLobby.gameState.playerMoney
+            });
+          }
+          break;
+
+        case 'propertyPurchased':
+          const propLobbyId = clientToLobby.get(ws);
+          if (!propLobbyId) return;
+          
+          const propLobby = lobbies.get(propLobbyId);
+          // { spaceNumber, ownerName }
+          if (typeof data.spaceNumber === 'number' && data.ownerName) {
+            propLobby.gameState.propertyOwners[data.spaceNumber] = data.ownerName;
+            broadcastToLobby(propLobbyId, {
+              type: 'propertyPurchased',
+              spaceNumber: data.spaceNumber,
+              ownerName: data.ownerName,
+              propertyOwners: propLobby.gameState.propertyOwners
+            });
+          }
+          break;
 
         case 'diceRolled':
+          const diceLobbyId = clientToLobby.get(ws);
+          if (!diceLobbyId) return;
+          
+          const diceLobby = lobbies.get(diceLobbyId);
           // Validate that it's this client's turn before accepting the roll
-          const playerIdx = clientToPlayerMap.get(ws);
-          if (playerIdx !== undefined && playerIdx === gameState.currentPlayerIndex) {
-            gameState.diceResult = data.result;
-            broadcast({
+          const playerIdx = diceLobby.players.findIndex(p => p.ws === ws);
+          if (playerIdx !== undefined && playerIdx === diceLobby.gameState.currentPlayerIndex) {
+            diceLobby.gameState.diceResult = data.result;
+            broadcastToLobby(diceLobbyId, {
               type: 'diceRolled',
               result: data.result,
-              rollerIndex: playerIdx  // Include who rolled so clients can skip animation for self
+              rollerIndex: playerIdx
             });
           } else {
-            console.log(`⚠️ Invalid dice roll from player ${playerIdx} (current turn: ${gameState.currentPlayerIndex})`);
+            console.log(`⚠️ Invalid dice roll from player ${playerIdx} (current turn: ${diceLobby.gameState.currentPlayerIndex})`);
+          }
+          break;
+
+        case 'minigameWin':
+          const miniLobbyId = clientToLobby.get(ws);
+          if (!miniLobbyId) return;
+          
+          // Broadcast so other players see "X won $Y in the slots!" popup
+          if (data.playerName && typeof data.amount === 'number' && data.amount > 0) {
+            broadcastToLobby(miniLobbyId, {
+              type: 'minigameWin',
+              playerName: data.playerName,
+              amount: data.amount,
+              game: data.game || 'slots'
+            });
           }
           break;
 
         case 'tokenMoved':
+          const tokenLobbyId = clientToLobby.get(ws);
+          if (!tokenLobbyId) return;
+          
+          const tokenLobby = lobbies.get(tokenLobbyId);
           // Update token position
-          if (!gameState.tokenPositions[data.tokenName]) {
-            gameState.tokenPositions[data.tokenName] = {};
+          if (!tokenLobby.gameState.tokenPositions[data.tokenName]) {
+            tokenLobby.gameState.tokenPositions[data.tokenName] = {};
           }
-          gameState.tokenPositions[data.tokenName] = {
+          tokenLobby.gameState.tokenPositions[data.tokenName] = {
             space: data.space,
             x: data.x,
             y: data.y,
             z: data.z
           };
-          broadcast({
+          broadcastToLobby(tokenLobbyId, {
             type: 'tokenMoved',
+            moveId: data.moveId,
             tokenName: data.tokenName,
             space: data.space,
             x: data.x,
@@ -167,24 +375,38 @@ wss.on('connection', (ws, req) => {
           break;
 
         case 'nextTurn':
-          gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.selectedPlayers.length;
-          broadcast({
+          const turnLobbyId = clientToLobby.get(ws);
+          if (!turnLobbyId) return;
+          
+          const turnLobby = lobbies.get(turnLobbyId);
+          turnLobby.gameState.currentPlayerIndex = (turnLobby.gameState.currentPlayerIndex + 1) % turnLobby.gameState.selectedPlayers.length;
+          broadcastToLobby(turnLobbyId, {
             type: 'turnChanged',
-            currentPlayerIndex: gameState.currentPlayerIndex
+            currentPlayerIndex: turnLobby.gameState.currentPlayerIndex
           });
           break;
 
         case 'reset':
-          gameState = {
+          const resetLobbyId = clientToLobby.get(ws);
+          if (!resetLobbyId) return;
+          
+          const resetLobby = lobbies.get(resetLobbyId);
+          resetLobby.gameState = {
             selectedPlayers: [],
             gameStarted: false,
             currentPlayerIndex: 0,
             tokenPositions: {},
             diceResult: null,
-            players: []
+            players: [],
+            playerMoney: {},
+            propertyOwners: {}
           };
-          broadcast({
+          broadcastToLobby(resetLobbyId, {
             type: 'gameReset'
+          });
+          broadcast({
+            type: 'lobbySummary',
+            lobbies: getLobbySummary()
           });
           break;
       }
@@ -194,8 +416,46 @@ wss.on('connection', (ws, req) => {
   });
 
   ws.on('close', () => {
-    clientToPlayerMap.delete(ws);
-    console.log(`❌ Player disconnected (${clientIp}). Total players: ${wss.clients.size}`);
+    const lobbyId = clientToLobby.get(ws);
+    const playerName = clientToPlayerName.get(ws);
+    
+    if (lobbyId && playerName) {
+      const lobby = lobbies.get(lobbyId);
+      if (lobby) {
+        // Remove player from lobby
+        lobby.players = lobby.players.filter(p => p.ws !== ws);
+        
+        // Update player indices for remaining players
+        lobby.players.forEach((player, index) => {
+          player.playerIndex = index;
+        });
+        
+        console.log(`❌ ${playerName} left ${lobbyId}. Players in lobby: ${lobby.players.length}/4`);
+        
+        // Notify remaining players in lobby
+        if (lobby.players.length > 0) {
+          broadcastToLobby(lobbyId, {
+            type: 'playersUpdated',
+            players: lobby.players.map(p => ({ name: p.name, index: p.playerIndex })),
+            playerCount: lobby.players.length
+          });
+        } else {
+          // Remove empty lobby
+          lobbies.delete(lobbyId);
+          console.log(`🗑️ Removed empty lobby ${lobbyId}`);
+        }
+
+        // After any join/leave, update global lobby summary for all tabs
+        broadcast({
+          type: 'lobbySummary',
+          lobbies: getLobbySummary()
+        });
+      }
+    }
+    
+    clientToLobby.delete(ws);
+    clientToPlayerName.delete(ws);
+    console.log(`❌ Disconnected from ${clientIp}. Total connections: ${wss.clients.size}`);
   });
 
   ws.on('error', (error) => {
@@ -217,10 +477,29 @@ function broadcast(message) {
   });
 }
 
+function broadcastToLobby(lobbyId, message) {
+  const lobby = lobbies.get(lobbyId);
+  if (!lobby) return;
+  
+  console.log(`📡 Broadcasting to ${lobbyId}: ${message.type} to ${lobby.players.length} player(s)`);
+  const payload = JSON.stringify(message);
+  lobby.players.forEach(playerData => {
+    if (playerData.ws.readyState === WebSocket.OPEN) {
+      playerData.ws.send(payload);
+    }
+  });
+}
+
+
 server.listen(PORT, '0.0.0.0', () => {
+  const lanIP = getLocalExternalIPv4();
   console.log(`\n🎲 Monopoly Game Server running at:`);
-  console.log(`   Local: http://localhost:${PORT}`);
-  console.log(`   Network: http://192.168.0.111:${PORT} (or your PC's IP)`);
+  console.log(`   Local:   http://localhost:${PORT}`);
+  if (lanIP) {
+    console.log(`   Network: http://${lanIP}:${PORT}`);
+  } else {
+    console.log(`   Network: <LAN IP not found>`);
+  }
   console.log(`\n⏳ Waiting for players to connect...\n`);
 });
 

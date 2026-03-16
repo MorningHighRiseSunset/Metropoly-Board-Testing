@@ -145,8 +145,15 @@ window.initCrapsMinigame = function(container, bankroll = 5000, updateMainGameBa
 			}
 		}
 		window.onDiceRoll = function(roll) {
-			showDiceResult(roll);
-			handleCrapsRoll(roll);
+ 			// Play random dice sound (../Sounds/ when loaded as iframe from main board)
+ 			const diceSounds = [
+ 				'../Sounds/dice-95077.mp3',
+ 				'../Sounds/dice-142528.mp3'
+ 			];
+ 			const sound = new Audio(diceSounds[Math.floor(Math.random() * diceSounds.length)]);
+ 			sound.play().catch(function() {});
+ 			showDiceResult(roll);
+ 			handleCrapsRoll(roll);
 		};
 	}
 	playerBankroll = bankroll;

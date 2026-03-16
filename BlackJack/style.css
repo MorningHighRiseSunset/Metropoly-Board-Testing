@@ -15,9 +15,6 @@
 body {
 	margin: 0;
 	padding: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
 	background: #1e1e1e;
 	min-height: 100vh;
 	box-sizing: border-box;
@@ -25,20 +22,37 @@ body {
 
 #game-ui {
 	position: relative;
-	width: 600px;
-	height: 420px;
+	width: 100%;
+	max-width: 600px;
+	height: auto;
+	aspect-ratio: 600 / 420;
 	box-shadow: 0 8px 32px #000a;
 	border-radius: 24px;
 	overflow: hidden;
+	margin: 40px auto;
+	transition: max-width 0.2s;
+}
+@media (max-width: 700px) {
+	#game-ui {
+		max-width: 98vw;
+		border-radius: 12px;
+		margin: 12px auto;
+	}
 }
 .table-svg {
 	display: block;
 	margin: auto;
 	background: none;
-	width: 600px;
-	height: 420px;
+	width: 100%;
+	height: auto;
 	max-width: 600px;
-	max-height: 420px;
+	aspect-ratio: 600 / 420;
+	transition: max-width 0.2s;
+}
+@media (max-width: 700px) {
+	.table-svg {
+		max-width: 98vw;
+	}
 }
 .bet-square {
 	stroke: #FFD700;
@@ -58,26 +72,42 @@ body {
 	transform: translateX(-50%);
 	z-index: 10;
 	background: rgba(0,0,0,0.7);
-	padding: 10px 24px;
+	padding: 2vw 3vw;
 	border-radius: 12px;
 	color: #FFD700;
 	font-size: 1.1em;
 	display: flex;
-	gap: 18px;
+	flex-wrap: wrap;
+	gap: 2vw;
 	align-items: center;
 	box-shadow: 0 2px 8px #0006;
+	width: auto;
+	max-width: 98vw;
+	box-sizing: border-box;
+	transition: max-width 0.2s, padding 0.2s;
+}
+@media (max-width: 700px) {
+	#controls {
+		padding: 6px 6px;
+		border-radius: 8px;
+		font-size: 0.95em;
+		gap: 8px;
+	}
 }
 button {
 	background: linear-gradient(90deg, #FFD700 60%, #fff 100%);
 	color: #00543a;
 	border: none;
 	border-radius: 6px;
-	padding: 8px 18px;
+	padding: 0.7em 2vw;
 	font-size: 1em;
 	font-weight: bold;
 	cursor: pointer;
 	box-shadow: 0 2px 8px #0003;
 	transition: background 0.2s, box-shadow 0.2s;
+	min-width: 80px;
+	max-width: 30vw;
+	margin: 0.2em 0;
 }
 button:active {
 	box-shadow: 0 1px 2px #0002;

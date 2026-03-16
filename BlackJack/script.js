@@ -136,8 +136,13 @@ window.initBlackjackMinigame = function(container, playerMoney, updateMainGameBa
 	
 	console.log('Buttons found:', {dealBtn, hitBtn, standBtn});
 
-	// --- State ---
+	// --- State --- (use playerMoney, or URL param when loaded in iframe, or default)
 	let balance = (typeof playerMoney === 'number' && !isNaN(playerMoney)) ? playerMoney : 1000;
+	try {
+		const params = new URLSearchParams(window.location.search);
+		const urlBalance = params.get('balance');
+		if (urlBalance != null) { const n = parseInt(urlBalance, 10); if (!isNaN(n) && n > 0) balance = n; }
+	} catch (_) {}
 	let currentBet = 0;
 	let currentBetSquare = null;
 	let playerHand = [];
@@ -226,8 +231,9 @@ window.initBlackjackMinigame = function(container, playerMoney, updateMainGameBa
 		balanceSpan.textContent = `Balance: $${balance}`;
 		if (typeof updateMainGameBalance === 'function') {
 			updateMainGameBalance(balance);
+		} else if (window.parent !== window && window.parent.postMessage) {
+			window.parent.postMessage({ type: 'minigame-balance-update', finalBalance: balance }, '*');
 		} else if (container && typeof CustomEvent === 'function') {
-			// Fallback: dispatch event for loader to catch
 			container.dispatchEvent(new CustomEvent('minigame-balance-update', {detail: {balance}}));
 		}
 	}
@@ -266,6 +272,8 @@ window.initBlackjackMinigame = function(container, playerMoney, updateMainGameBa
 		if (!document.body.contains(container)) {
 			if (typeof updateMainGameBalance === 'function') {
 				updateMainGameBalance(balance);
+			} else if (window.parent !== window && window.parent.postMessage) {
+				window.parent.postMessage({ type: 'minigame-close', finalBalance: balance, game: 'blackjack' }, '*');
 			} else if (container && typeof CustomEvent === 'function') {
 				container.dispatchEvent(new CustomEvent('minigame-balance-update', {detail: {balance}}));
 			}
@@ -493,6 +501,12 @@ window.initBlackjackMinigame = function(container, playerMoney, updateMainGameBa
 		}
 		updateBalance();
 		showResult(result);
+		// Auto-close the minigame after showing the result (one round per visit)
+		setTimeout(() => {
+			if (window.parent !== window && window.parent.postMessage) {
+				window.parent.postMessage({ type: 'minigame-close', finalBalance: balance, game: 'blackjack' }, '*');
+			}
+		}, 1200);
 		if (currentBetSquare !== null) {
 			const poly = betSquares[currentBetSquare];
 			poly.classList.remove('win', 'lose', 'push');
@@ -543,17 +557,23 @@ window.initBlackjackMinigame = function(container, playerMoney, updateMainGameBa
 		insuranceActive = false;
 	}
 
-	// Example: Register player and update balance after a win/loss
+	// Example: Register player and update balance after a win/loss (optional when in iframe)
 	function onPlayerJoin(playerId) {
-		window.moneySystem.registerPlayer(playerId);
+		if (window.moneySystem && typeof window.moneySystem.registerPlayer === 'function') {
+			window.moneySystem.registerPlayer(playerId);
+		}
 	}
 
 	function onBlackjackWin(playerId, amount) {
-		window.moneySystem.addMoney(playerId, amount);
+		if (window.moneySystem && typeof window.moneySystem.addMoney === 'function') {
+			window.moneySystem.addMoney(playerId, amount);
+		}
 	}
 
 	function onBlackjackLoss(playerId, amount) {
-		window.moneySystem.subtractMoney(playerId, amount);
+		if (window.moneySystem && typeof window.moneySystem.subtractMoney === 'function') {
+			window.moneySystem.subtractMoney(playerId, amount);
+		}
 	}
 
 	// --- Initial state ---

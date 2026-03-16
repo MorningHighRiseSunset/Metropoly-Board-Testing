@@ -2,13 +2,37 @@ body {
 	margin: 0;
 	background: #ffffff;
 	font-family: Arial, sans-serif;
-	display: flex;
-	justify-content: center;
-	align-items: center;
 	min-height: 100vh;
 	color: white;
-	gap: 40px;
-	padding: 20px;
+	padding: 8px;
+	box-sizing: border-box;
+}
+/* Responsive container for roulette game */
+.roulette-container {
+	display: flex;
+	flex-direction: row;
+	align-items: flex-start;
+	justify-content: center;
+	gap: 20px;
+	padding: 16px 8px;
+	position: relative;
+	background: #fffbe6;
+	border-radius: 16px;
+	box-shadow: 0 4px 16px #0003;
+	max-width: 100%;
+	margin: 0 auto;
+	overflow-x: auto;
+	width: 100%;
+	box-sizing: border-box;
+	transition: padding 0.2s, gap 0.2s;
+}
+@media (max-width: 900px) {
+	.roulette-container {
+		flex-direction: column;
+		gap: 18px;
+		padding: 12px 0;
+		border-radius: 12px;
+	}
 }
 /* Roulette wheel canvas styles (no container background) */
 #wheel {
@@ -17,6 +41,15 @@ body {
 	background: radial-gradient(ellipse at 60% 40%, #e2b07a 0%, #a86b2e 100%);
 	display: block;
 	margin-bottom: 10px;
+	width: 100%;
+	max-width: 400px;
+	height: auto;
+	transition: max-width 0.2s;
+}
+@media (max-width: 700px) {
+	#wheel {
+		max-width: 250px;
+	}
 }
 /* First roulette table styles */
 .roulette-table {
@@ -31,14 +64,31 @@ body {
 	font-size: 17px;
 	line-height: 1.1;
 	max-width: 650px;
+	width: 100%;
 	position: relative;
 	overflow: hidden;
+	box-sizing: border-box;
+	transition: padding 0.2s, font-size 0.2s;
+}
+@media (max-width: 700px) {
+	.roulette-table {
+		padding: 8px 4px 8px 4px;
+		font-size: 13px;
+		border-radius: 10px;
+	}
 }
 .table-grid {
 	display: grid;
-	grid-template-columns: repeat(12, 44px);
+	grid-template-columns: repeat(12, minmax(0, 1fr));
 	grid-template-rows: 36px 36px 36px 48px 48px;
 	gap: 2px;
+	width: 100%;
+	box-sizing: border-box;
+}
+@media (max-width: 700px) {
+	.table-grid {
+		grid-template-rows: 24px 24px 24px 32px 32px;
+	}
 }
 .number-cell {
 	display: flex;

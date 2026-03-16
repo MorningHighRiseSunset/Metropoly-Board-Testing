@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="./style.css">
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body style="background:#fffbe6;margin:0;padding:0;overflow:hidden;">
 
   <!-- Instructions Modal -->
   <div id="instructions-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.45);z-index:100;align-items:center;justify-content:center;">
@@ -23,8 +23,9 @@
       <button id="close-instructions" style="position:absolute;top:10px;right:14px;font-size:1.2em;background:none;border:none;color:#222;cursor:pointer;">&times;</button>
     </div>
   </div>
-  <div class="roulette-container" style="display:flex;flex-direction:row;align-items:flex-start;justify-content:center;gap:40px;padding:32px 0;position:relative;background:#fffbe6;border-radius:24px;box-shadow:0 8px 32px #0003;max-width:1200px;margin:40px auto;overflow-x:auto;">
-    <div style="display:flex;flex-direction:column;align-items:center;gap:18px;min-width:420px;">
+  <div id="roulette-center-wrapper" style="position:fixed;top:0;left:0;width:100vw;height:100vh;display:flex;justify-content:center;align-items:center;overflow:visible;z-index:10;background:#fffbe6;">
+    <div class="roulette-container" style="display:flex;flex-direction:row;align-items:flex-start;justify-content:center;gap:40px;padding:32px 0;position:relative;background:#fffbe6;border-radius:24px;box-shadow:0 8px 32px #0003;max-width:1200px;margin:40px auto;overflow-x:auto;">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:18px;width:100%;min-width:0;max-width:400px;box-sizing:border-box;">
       <canvas id="wheel" width="400" height="400" aria-label="Roulette wheel"></canvas>
       <div style="display:flex;gap:16px;justify-content:center;">
         <button id="instructions-btn" style="padding:10px 22px;font-size:1em;background:#e2b07a;color:#222;border-radius:10px;border:none;box-shadow:0 2px 8px #0005;cursor:pointer;font-weight:bold;z-index:20;">INSTRUCTIONS</button>
@@ -33,7 +34,7 @@
     </div>
 
     <!-- First roulette table -->
-    <div class="roulette-table" aria-label="Roulette betting table" role="table" style="min-width:600px;">
+    <div class="roulette-table" aria-label="Roulette betting table" role="table" style="width:100%;min-width:0;max-width:650px;box-sizing:border-box;">
       <div class="table-grid">
   <!-- Zero and Double Zero Cells for American Roulette -->
   <div class="number-cell zero" role="gridcell" aria-label="0" style="grid-column: 1; grid-row: 1 / 2;">0</div>
@@ -135,6 +136,26 @@ spinBtn.onclick = () => { if (typeof spinWheel === 'function') spinWheel(); };
 // Remove old spin button if present
 const oldSpinBtn = document.querySelector('button[style*="SPIN"]');
 if (oldSpinBtn && oldSpinBtn.id !== 'spin-btn') oldSpinBtn.remove();
+
+// Responsive scaling and true middle-centering for roulette game
+function scaleRouletteGame() {
+  const container = document.querySelector('.roulette-container');
+  const wrapper = document.getElementById('roulette-center-wrapper');
+  if (!container || !wrapper) return;
+  const designWidth = 1200;
+  const designHeight = container.offsetHeight || 800;
+  const availableWidth = window.innerWidth;
+  const availableHeight = window.innerHeight;
+  let scale = Math.min(availableWidth / designWidth, availableHeight / designHeight, 1);
+  container.style.transform = `scale(${scale})`;
+  container.style.transformOrigin = 'center center';
+  // Center the wrapper both horizontally and vertically
+  wrapper.style.justifyContent = 'center';
+  wrapper.style.alignItems = 'center';
+  wrapper.style.overflow = 'visible';
+}
+window.addEventListener('resize', scaleRouletteGame);
+window.addEventListener('DOMContentLoaded', scaleRouletteGame);
 </script>
 
 </body>

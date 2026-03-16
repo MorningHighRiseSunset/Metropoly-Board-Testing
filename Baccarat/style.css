@@ -220,6 +220,7 @@ body {
 
 .container {
     max-width: 800px;
+    width: 100%;
     margin: 40px auto;
     background: #1e3c72;
     border-radius: 32px;
@@ -228,6 +229,15 @@ body {
     position: relative;
     overflow: visible;
     animation: fadeIn 1.2s cubic-bezier(.4,0,.2,1);
+    box-sizing: border-box;
+    transition: max-width 0.2s, border-radius 0.2s;
+}
+@media (max-width: 900px) {
+    .container {
+        max-width: 98vw;
+        border-radius: 16px;
+        margin: 12px auto;
+    }
 }
 
 @keyframes fadeIn {
@@ -247,13 +257,22 @@ h1 {
 /* Casino Table Redesign */
 .table-3d {
     position: relative;
-    width: 820px;
-    height: 400px;
+    width: 100%;
+    max-width: 820px;
+    height: auto;
+    aspect-ratio: 820 / 400;
     margin: 0 auto 24px auto;
     perspective: 1200px;
     display: flex;
     align-items: flex-end;
     justify-content: center;
+    transition: max-width 0.2s;
+}
+@media (max-width: 700px) {
+    .table-3d {
+        max-width: 98vw;
+        border-radius: 10px;
+    }
 }
 .table-shadow {
     position: absolute;

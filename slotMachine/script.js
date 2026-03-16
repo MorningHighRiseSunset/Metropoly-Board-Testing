@@ -9,12 +9,24 @@ window.initSlotMachine = function(container, playerMoney, updateMainGameBalance)
 		container.querySelector('#reel3-strip')
 	];
 	const balanceSpan = container.querySelector('#slot-balance');
-	let balance = typeof playerMoney === 'number' ? playerMoney : 5000;
+	// Use main game balance when embedded (parent sets __minigameTokenName and getPlayerBank)
+	let balance = typeof playerMoney === 'number' ? playerMoney : 0;
+	try {
+		if (typeof window.parent !== 'undefined' && window.parent !== window && window.parent.__minigameTokenName && typeof window.parent.getPlayerBank === 'function') {
+			balance = window.parent.getPlayerBank(window.parent.__minigameTokenName) || 0;
+		}
+	} catch (err) { /* cross-origin */ }
+	if (balance <= 0 && typeof playerMoney !== 'number') balance = 0;
+
 	function updateBalanceDisplay() {
 		balanceSpan.textContent = balance;
-		if (typeof updateMainGameBalance === 'function') {
-			updateMainGameBalance(balance);
-		} else if (container && typeof CustomEvent === 'function') {
+		try {
+			if (window.parent !== window && window.parent.__minigameTokenName && typeof window.parent.setPlayerBank === 'function') {
+				window.parent.setPlayerBank(window.parent.__minigameTokenName, balance);
+			}
+		} catch (err) { /* cross-origin */ }
+		if (typeof updateMainGameBalance === 'function') updateMainGameBalance(balance);
+		if (container && typeof CustomEvent === 'function') {
 			container.dispatchEvent(new CustomEvent('minigame-balance-update', {detail: {balance}}));
 		}
 	}
@@ -104,7 +116,14 @@ window.initSlotMachine = function(container, playerMoney, updateMainGameBalance)
 			});
 			setTimeout(() => {
 				checkWin(finalSymbols);
-				spinBtn.disabled = false;
+				spinBtn.disabled = true; // One play only - do not re-enable
+				// Sync final balance to main game and tell parent to close minigame
+				updateBalanceDisplay();
+				try {
+					if (window.parent !== window && window.parent.postMessage) {
+						window.parent.postMessage({ type: 'minigame-close', finalBalance: balance, game: 'slots' }, '*');
+					}
+				} catch (err) {}
 			}, 250);
 		}, 4000 + 2*500 + 100); // Wait for last reel to finish
 	}
